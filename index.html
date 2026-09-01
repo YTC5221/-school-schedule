@@ -31,7 +31,6 @@
   }
   .wrap{ max-width:480px; margin:0 auto; padding:16px 14px 40px; width:100%; }
   h1{ font-size:24px; font-weight:800; margin:0; }
-  .subtitle{ font-size:13px; color:var(--muted); margin:4px 0 0; }
   .header{ margin-bottom:16px; }
 
   .tabbar{ display:flex; gap:6px; margin-bottom:18px; }
@@ -196,8 +195,7 @@
 <body>
   <div class="wrap">
     <div class="header">
-      <h1>課務行事曆管理</h1>
-      <p class="subtitle">行事曆・進度・輸入異動（獨立網頁版・資料存在本機瀏覽器）</p>
+      <h1 id="app-title">課務行事曆管理</h1>
     </div>
     <div id="root"></div>
   </div>
@@ -291,6 +289,7 @@
 
   var state = {
     tab: "calendar",
+    myTitle: "",
     termStart: "", termEnd: "",
     template: emptyTemplate(),
     templateOptions: [],
@@ -333,7 +332,7 @@
     return cls ? { content: cls, type: "class" } : { content: "", type: "empty" };
   }
   function cellStyleAttrs(cell){
-    if(cell.type === "empty") return { cls:"cls-empty", style:"" };
+    if(cell.type === "empty" || cell.type === "holiday-empty") return { cls:"cls-empty", style:"" };
     if(cell.type === "class"){
       var c = optionColor(cell.content);
       if(c) return { cls:"", style:"background:"+c.bg+";color:"+c.fg+";font-weight:700;" };
@@ -351,6 +350,7 @@
 
   function saveToStorage(){
     var data = {
+      myTitle: state.myTitle,
       termStart: state.termStart, termEnd: state.termEnd, template: state.template,
       templateOptions: state.templateOptions,
       overrides: state.overrides, holidayNames: state.holidayNames, reminders: state.reminders,
@@ -363,6 +363,7 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
         var data = JSON.parse(raw);
+        if(data.myTitle) state.myTitle = data.myTitle;
         if(data.termStart) state.termStart = data.termStart;
         if(data.termEnd) state.termEnd = data.termEnd;
         if(data.template) state.template = data.template;
@@ -638,7 +639,8 @@
 
     // 學期設定與課表範本（倒數第二個模塊，在學期結束上方）
     var weeks = buildWeeks(state.termStart, state.termEnd);
-    var setupBody = '<div class="field"><label>本學期起始日期</label>'+dateInputHtml('termStart', state.termStart, '', 'plain')+'</div>' +
+    var setupBody = '<div class="field"><label>我的標題（留空則使用預設標題「課務行事曆管理」）</label><input class="input" id="f-my-title" data-action="save-mytitle" value="'+escapeHtml(state.myTitle||'')+'" placeholder="留空則不更改標題"></div>' +
+      '<div class="field"><label>本學期起始日期</label>'+dateInputHtml('termStart', state.termStart, '', 'plain')+'</div>' +
       '<div class="field"><label>本學期結束日期</label>'+dateInputHtml('termEnd', state.termEnd, '', 'plain')+'</div>' +
       '<div class="hint mb-3">'+(weeks.length>0 ? "已產生 "+weeks.length+" 週行事曆" : "請選擇起訖日期以產生行事曆")+'</div>';
     if(state.termStart && state.termEnd){
@@ -716,6 +718,7 @@
 
   function render(){
     document.getElementById('root').innerHTML = renderApp();
+    updateAppTitle();
     var overlayHost = document.getElementById('modal-host');
     if(overlayHost) overlayHost.remove();
     if(state.editingCell || state.datePicker){
@@ -812,6 +815,7 @@
 
   function currentBackupData(){
     return {
+      myTitle: state.myTitle,
       termStart: state.termStart, termEnd: state.termEnd, template: state.template,
       templateOptions: state.templateOptions,
       overrides: state.overrides, holidayNames: state.holidayNames, reminders: state.reminders,
@@ -857,6 +861,7 @@
   }
   function applyImportedData(data){
     if(!data || typeof data !== 'object'){ toast('匯入內容格式不正確'); return false; }
+    state.myTitle = data.myTitle || '';
     state.termStart = data.termStart || '';
     state.termEnd = data.termEnd || '';
     state.template = data.template || emptyTemplate();
@@ -1118,6 +1123,17 @@
       saveToStorage(); render();
       return;
     }
+    if(action === 'save-mytitle'){
+      state.myTitle = el.value.trim();
+      saveToStorage();
+      updateAppTitle();
+      return;
+    }
+  }
+
+  function updateAppTitle(){
+    var el = document.getElementById('app-title');
+    if(el) el.textContent = state.myTitle ? state.myTitle : '課務行事曆管理';
   }
 
   function jumpToCurrentWeek(){
