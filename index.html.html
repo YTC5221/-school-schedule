@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="課務行事曆">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230f766e'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif'%3E%E8%AA%B2%3C/text%3E%3C/svg%3E">
+<title>課務行事曆管理</title>
+<style>
+  :root{
+    --ink:#292524; --muted:#78716c; --faint:#a8a29e;
+    --bg:#f5f5f4; --card:#ffffff; --border:#e7e5e4; --border2:#d6d3d1;
+    --teal:#0f766e; --teal-dark:#0c5c56; --teal-bg:#ccfbf1; --teal-bg2:#f0fdfa;
+    --amber:#b45309; --amber-bg:#fffbeb; --amber-bg2:#fef3c7;
+    --sky:#0369a1; --sky-bg:#f0f9ff;
+    --rose:#be123c; --rose-bg:#fff1f2; --rose-bg2:#ffe4e6;
+    --emerald:#059669; --emerald-fill:#10b981;
+    --violet:#6d28d9;
+    --orange:#c2410c;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); }
+  body{
+    font-family: ui-rounded, "PingFang TC", "Heiti TC", "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:16px; line-height:1.5;
+    -webkit-text-size-adjust:100%;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .wrap{ max-width:480px; margin:0 auto; padding:16px 14px 40px; width:100%; }
+  h1{ font-size:24px; font-weight:800; margin:0; }
+  .subtitle{ font-size:13px; color:var(--muted); margin:4px 0 0; }
+  .header{ margin-bottom:16px; }
+
+  .tabbar{ display:flex; gap:6px; margin-bottom:18px; }
+  .tabbtn{ flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:11px 6px; border-radius:14px; border:2px solid var(--border); background:#fff; color:var(--muted); font-weight:700; font-size:14px; font-family:inherit; cursor:pointer; }
+  .tabbtn.active{ background:var(--teal); color:#fff; border-color:var(--teal); }
+
+  .card{ background:var(--card); border:2px solid var(--border); border-radius:18px; margin-bottom:18px; overflow:hidden; }
+  .card.no-pad{ padding:0; }
+  .p-3{ padding:12px; }
+  .p-4{ padding:16px; }
+
+  .collapse-header{ width:100%; display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:none; border:none; font-family:inherit; cursor:pointer; }
+  .bold{ font-size:16px; font-weight:800; color:var(--ink); }
+  .collapse-body{ padding:0 16px 16px; }
+
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:13px; color:var(--muted); margin-bottom:5px; }
+  label.label{ display:block; font-size:13px; color:var(--muted); margin-bottom:5px; }
+  .input,.select,.textarea{
+    width:100%; border:2px solid var(--border); border-radius:12px; padding:10px 12px;
+    font-size:16px; font-family:inherit; background:#fff; color:var(--ink);
+  }
+  .textarea{ resize:none; }
+  .hint{ font-size:13px; color:var(--faint); }
+  .mt-3{ margin-top:12px; } .mt-4{ margin-top:16px; } .mb-2{ margin-bottom:8px; } .mb-3{ margin-bottom:12px; } .mb-4{ margin-bottom:16px; } .mb-5{ margin-bottom:20px; }
+  .muted{ font-size:14px; color:var(--faint); }
+
+  .tabrow{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .chip{ padding:8px 13px; border-radius:12px; border:2px solid var(--border); background:#fafaf9; color:var(--muted); font-weight:700; font-size:14px; font-family:inherit; cursor:pointer; }
+  .chip-active{ background:var(--teal); color:#fff; border-color:var(--teal); }
+
+  .slotlist{ display:flex; flex-direction:column; }
+  .slotlist.px-3{ padding:0 12px; }
+  .slotrow{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid #f2f1ef; }
+  .slotrow:last-child{ border-bottom:none; }
+  .slotlabel{ width:34px; flex-shrink:0; text-align:center; font-weight:800; color:var(--teal); font-size:16px; }
+  .cellcontent{ flex:1; min-width:0; font-size:16px; border-radius:10px; padding:7px 11px; word-break:break-word; }
+  .cell-empty{ color:#d6d3d1; }
+  .cell-class{ color:#44403c; }
+  .cell-activity{ background:var(--sky-bg); color:#075985; font-style:italic; }
+  .cell-change{ background:var(--amber-bg2); color:#92400e; font-weight:700; }
+  .cell-holiday{ background:var(--rose-bg2); color:var(--rose); font-weight:800; }
+  .cell-holiday-empty{ background:var(--rose-bg); color:#fecdd3; }
+
+  .cls-601{ background:#f5dde1; color:#a23b52; font-weight:700; }
+  .cls-602{ background:#f6e3d0; color:#a3661f; font-weight:700; }
+  .cls-603{ background:#f3edc9; color:#8c7818; font-weight:700; }
+  .cls-604{ background:#dfeade; color:#4a7a52; font-weight:700; }
+  .cls-605{ background:#dbe6ef; color:#3f6690; font-weight:700; }
+  .cls-606{ background:#e6dfef; color:#6a5490; font-weight:700; }
+  .cls-607{ background:#f0dde9; color:#964d80; font-weight:700; }
+  .cls-empty{ color:#d6d3d1; }
+  .cls-other{ background:#efefed; color:#7a7873; }
+
+  .overview-grid{ display:grid; grid-template-columns: 28px repeat(5,1fr); gap:4px; align-items:center; }
+  .ov-head{ text-align:center; font-size:11px; font-weight:700; color:var(--faint); }
+  .ov-slot{ text-align:center; font-size:11px; font-weight:800; color:var(--teal); padding:5px 0; }
+  .ov-cell{ text-align:center; font-size:12px; padding:5px 0; border-radius:8px; color:#d6d3d1; }
+  .ov-filled{ background:var(--teal-bg); color:var(--teal-dark); font-weight:700; }
+
+  .empty-box{ font-size:14px; color:var(--faint); background:#fff; border:2px dashed var(--border2); border-radius:18px; padding:34px 20px; text-align:center; }
+
+  .weeknav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:8px; }
+  .navbtn{ display:flex; align-items:center; gap:4px; padding:9px 12px; border-radius:12px; border:2px solid #99f6e4; background:#fff; color:var(--teal); font-weight:700; font-size:14px; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  .navbtn.disabled{ color:#d6d3d1; border-color:var(--border); background:#fafaf9; }
+  .weektitle{ text-align:center; }
+  .weeknum{ font-size:20px; font-weight:800; }
+  .weekrange{ font-size:12px; color:var(--faint); }
+
+  .reminder-box{ margin-bottom:12px; background:var(--teal-bg2); border:2px solid #99f6e4; color:#0f5c56; font-weight:700; font-size:14px; border-radius:14px; padding:10px 13px; word-break:break-word; }
+
+  .dayblock{ border-bottom:1px solid #f2f1ef; }
+  .dayblock:last-child{ border-bottom:none; }
+  .daytitle{ display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#fafaf9; font-weight:800; font-size:16px; }
+  .daytitle.holiday{ background:var(--rose-bg); color:var(--rose); }
+
+  .weekgrid{ display:grid; grid-template-columns: 24px repeat(5,1fr); gap:3px; }
+  .wg-cell{ font-size:11px; text-align:center; padding:5px 2px; border-radius:7px; word-break:break-word; line-height:1.25; }
+  .wg-head{ font-weight:800; color:#57534e; background:#fafaf9; padding:7px 2px; }
+  .wg-date{ font-size:9px; font-weight:400; color:#a8a29e; }
+  .wg-holiday-head{ background:var(--rose-bg); color:var(--rose); }
+  .wg-slot{ font-weight:800; color:var(--teal); background:#f0fdfa; display:flex; align-items:center; justify-content:center; }
+  .wg-content{ border:1px solid #f2f1ef; min-height:32px; display:flex; align-items:center; justify-content:center; }
+  .daydate{ font-size:12px; font-weight:400; color:var(--faint); }
+
+  .notes-box{ background:var(--amber-bg); border:2px solid #fde68a; border-radius:18px; padding:13px; margin-bottom:16px; }
+  .notes-title{ font-size:14px; font-weight:800; color:var(--amber); margin-bottom:8px; }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:12px; font-size:13px; color:var(--muted); margin-bottom:16px; }
+  .legend span{ display:flex; align-items:center; gap:6px; }
+  .dot{ width:14px; height:14px; border-radius:4px; display:inline-block; }
+  .dot-activity{ background:var(--sky-bg); border:1px solid #bae6fd; }
+  .dot-change{ background:var(--amber-bg2); border:1px solid #fde68a; }
+  .dot-holiday{ background:var(--rose-bg2); border:1px solid #fecdd3; }
+
+  .checklist-header{ display:grid; grid-template-columns: 2fr repeat(7,1fr); gap:4px; padding:0 2px 8px; }
+  .checklist-body .checklist-row{ display:grid; grid-template-columns: 2fr repeat(7,1fr); gap:4px; align-items:center; padding:7px 2px; border-bottom:1px solid #f2f1ef; }
+  .checklist-body .checklist-row:last-child{ border-bottom:none; }
+  .ck-head{ text-align:center; font-size:12px; font-weight:800; color:var(--faint); }
+  .ck-itemname{ font-size:14px; font-weight:700; color:#44403c; word-break:break-word; line-height:1.3; }
+  .ck-done{ font-size:11px; color:var(--emerald); margin-top:2px; }
+  .ck-cell{ aspect-ratio:1/1; width:100%; border-radius:11px; border:2px solid; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; font-family:inherit; cursor:pointer; padding:0; }
+  .ck-empty{ background:#fafaf9; border-color:var(--border2); border-style:dashed; color:#d6d3d1; }
+  .ck-detail{ background:#ececea; border-color:var(--border2); color:#57534e; }
+  .ck-colored{ border-width:2px; font-weight:800; }
+
+  .btn{ border:none; border-radius:13px; padding:12px 16px; font-weight:800; font-size:16px; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .btn-teal{ background:var(--teal); color:#fff; }
+  .btn-sky{ background:var(--sky); color:#fff; }
+  .btn-amber{ background:var(--amber); color:#fff; }
+  .btn-violet{ background:var(--violet); color:#fff; }
+  .btn-orange{ background:var(--orange); color:#fff; }
+  .btn-rose{ background:var(--rose); color:#fff; }
+  .btn-dark{ background:#44403c; color:#fff; }
+  .btn-green{ background:var(--emerald); color:#fff; }
+  .btn-light{ background:#f5f5f4; color:#57534e; }
+  .btn-text{ background:none; color:var(--faint); padding:12px 8px; }
+  .btn-block{ width:100%; }
+  .btn-sm{ padding:9px 13px; font-size:14px; border-radius:11px; }
+
+  .stack{ display:flex; flex-direction:column; gap:16px; }
+  .stack-sm{ display:flex; flex-direction:column; gap:10px; }
+  .swapbox{ border:2px solid #f2f1ef; border-radius:14px; padding:12px; }
+  .swapbox-title{ font-size:13px; font-weight:800; color:var(--muted); margin-bottom:8px; }
+  .section-title{ font-size:16px; font-weight:800; margin:0 0 12px; display:flex; align-items:center; gap:7px; }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(41,37,36,0.45); display:flex; align-items:center; justify-content:center; z-index:9999; padding:16px; }
+  .modal{ background:#fff; border-radius:18px; padding:20px; width:100%; max-width:360px; }
+  .modal-title{ font-size:18px; font-weight:800; margin-bottom:12px; }
+  .modal-actions{ display:flex; flex-wrap:wrap; gap:8px; }
+
+  #toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%) translateY(20px); background:#292524; color:#fff; font-size:14px; padding:11px 18px; border-radius:13px; box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:10000; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; max-width:90%; text-align:center; }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .rose-card{ border-color:#fecdd3; }
+  .rose-title{ color:var(--rose); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>課務行事曆管理</h1>
+      <p class="subtitle">行事曆・Check List・課程異動（獨立網頁版・資料存在本機瀏覽器）</p>
+    </div>
+    <div id="root"></div>
+  </div>
+  <div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var WEEKDAY_LABELS = ["週一", "週二", "週三", "週四", "週五"];
+  var SLOTS = ["M", "1", "2", "3", "4", "N", "5", "6", "7", "E"];
+  var CLASS_LIST = ["601", "602", "603", "604", "605", "606", "607"];
+  var STORAGE_KEY = "school-schedule-state-v1";
+
+  var idCounter = 0;
+  function genId(){ idCounter += 1; return "id" + idCounter + "_" + Math.random().toString(36).slice(2,8); }
+
+  function pad(n){ return n < 10 ? "0"+n : ""+n; }
+  function formatDate(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function shortDate(s){ return s ? s.slice(5).replace("-","/") : ""; }
+  function parseDate(s){ var parts = s.split("-").map(Number); return new Date(parts[0], parts[1]-1, parts[2]); }
+  function addDays(d, n){ var r = new Date(d); r.setDate(r.getDate()+n); return r; }
+  function mondayOf(dateStr){
+    var d = parseDate(dateStr); var day = d.getDay();
+    var diff = day === 0 ? -6 : 1-day;
+    return formatDate(addDays(d, diff));
+  }
+  function weekdayIdxMonFri(dateStr){
+    var day = parseDate(dateStr).getDay();
+    return (day >= 1 && day <= 5) ? day-1 : -1;
+  }
+  function buildWeeks(startStr, endStr){
+    if(!startStr || !endStr) return [];
+    var start = parseDate(startStr), end = parseDate(endStr);
+    if(start > end) return [];
+    var cur = parseDate(mondayOf(startStr));
+    var weeks = []; var idx = 1; var guard = 0;
+    while(cur <= end && guard < 400){
+      guard++;
+      var days = [];
+      for(var i=0;i<5;i++){
+        var d = addDays(cur, i);
+        if(d >= start && d <= end){ days.push({ date:d, dateStr:formatDate(d), weekdayIdx:i }); }
+      }
+      if(days.length > 0){ weeks.push({ weekIndex: idx, mondayStr: formatDate(cur), days: days }); idx++; }
+      cur = addDays(cur, 7);
+    }
+    return weeks;
+  }
+  function emptyTemplate(){
+    var t = {};
+    for(var i=0;i<5;i++){ t[i]={}; SLOTS.forEach(function(s){ t[i][s]=""; }); }
+    return t;
+  }
+  function emptyClasses(){
+    var c = {};
+    CLASS_LIST.forEach(function(cl){ c[cl] = { status:"empty", date:"", text:"" }; });
+    return c;
+  }
+  function escapeHtml(str){
+    if(str === undefined || str === null) return "";
+    return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+  function cellClassName(cell){
+    if(cell.type === "empty") return "cls-empty";
+    if(cell.type === "class" && CLASS_LIST.indexOf(cell.content) !== -1){
+      return "cls-" + cell.content;
+    }
+    return "cls-other";
+  }
+
+  var state = {
+    tab: "calendar",
+    termStart: "", termEnd: "",
+    template: emptyTemplate(),
+    overrides: {}, holidayNames: {}, reminders: {}, keyNotes: {},
+    checklist: [],
+    setupOpen: true,
+    templateActiveDay: 0,
+    currentWeekIndex: 0,
+    editingCell: null,
+    editDate: "",
+    actDate:"", actSlot:"", actClass:"",
+    remDate:"",
+    swapADate:"", swapASlot:"", swapAClass:"",
+    swapBDate:"", swapBSlot:"", swapBClass:"",
+    chgDate:"", chgSlot:"", chgClass:"",
+    holDate:"",
+    endSemOpen: false,
+    sectionOpen: { activity:false, reminder:false, swap:false, change:false, holiday:false, endsem:false }
+  };
+
+  function getEffective(dateStr, weekdayIdx, slot){
+    var key = dateStr + "__" + slot;
+    if(state.overrides[key] !== undefined) return state.overrides[key];
+    var cls = state.template[weekdayIdx] ? state.template[weekdayIdx][slot] : "";
+    return cls ? { content: cls, type: "class" } : { content: "", type: "empty" };
+  }
+  function sortedChecklist(){
+    return state.checklist.slice().sort(function(a,b){
+      var ad = a.completedAt ? 1 : 0, bd = b.completedAt ? 1 : 0;
+      if(ad !== bd) return ad - bd;
+      if(ad) return a.completedAt - b.completedAt;
+      return a.createdAt - b.createdAt;
+    });
+  }
+
+  function saveToStorage(){
+    var data = {
+      termStart: state.termStart, termEnd: state.termEnd, template: state.template,
+      overrides: state.overrides, holidayNames: state.holidayNames, reminders: state.reminders,
+      keyNotes: state.keyNotes, checklist: state.checklist
+    };
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){}
+  }
+  function loadFromStorage(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var data = JSON.parse(raw);
+        if(data.termStart) state.termStart = data.termStart;
+        if(data.termEnd) state.termEnd = data.termEnd;
+        if(data.template) state.template = data.template;
+        if(data.overrides) state.overrides = data.overrides;
+        if(data.holidayNames) state.holidayNames = data.holidayNames;
+        if(data.reminders) state.reminders = data.reminders;
+        if(data.keyNotes) state.keyNotes = data.keyNotes;
+        if(data.checklist) state.checklist = data.checklist;
+        return true;
+      }
+    }catch(e){}
+    return false;
+  }
+
+  var toastTimer = null;
+  function toast(msg){
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 2500);
+  }
+
+  function selectHtml(field, options, current){
+    var opts = options.map(function(o){
+      return '<option value="'+escapeHtml(o.value)+'" '+(current===o.value?'selected':'')+'>'+escapeHtml(o.label)+'</option>';
+    }).join('');
+    return '<select class="select" data-action="set-field" data-field="'+field+'"><option value="">請選擇</option>'+opts+'</select>';
+  }
+
+  function validateSchoolDate(dateStr){
+    if(!dateStr) return { ok:true };
+    if(state.termStart && dateStr < state.termStart) return { ok:false, msg:"日期需在學期範圍內（"+state.termStart+" ～ "+state.termEnd+"）" };
+    if(state.termEnd && dateStr > state.termEnd) return { ok:false, msg:"日期需在學期範圍內（"+state.termStart+" ～ "+state.termEnd+"）" };
+    if(weekdayIdxMonFri(dateStr) === -1) return { ok:false, msg:"請選擇週一至週五" };
+    return { ok:true };
+  }
+  function dateInputHtml(field, value, extraClass){
+    var minAttr = state.termStart ? ' min="'+state.termStart+'"' : '';
+    var maxAttr = state.termEnd ? ' max="'+state.termEnd+'"' : '';
+    return '<input type="date" class="input '+(extraClass||'')+'" data-action="set-date-field" data-field="'+field+'" value="'+(value||'')+'"'+minAttr+maxAttr+'>';
+  }
+  function moduleCard(icon, title, key, bodyHtml, extraClass, titleClass){
+    var open = !!state.sectionOpen[key];
+    return '<div class="card '+(extraClass||'')+'">' +
+      '<button class="collapse-header" data-action="toggle-section" data-key="'+key+'"><span class="bold '+(titleClass||'')+'">'+icon+' '+title+'</span><span>'+(open?'▾':'▸')+'</span></button>' +
+      (open ? ('<div class="collapse-body">'+bodyHtml+'</div>') : '') +
+      '</div>';
+  }
+
+  function renderApp(){
+    var body = '<div class="tabbar">'+
+      ['calendar','checklist','changes'].map(function(id){
+        var label = id==='calendar' ? '📅 行事曆' : (id==='checklist' ? '✅ Check List' : '✏️ 輸入・異動');
+        return '<button class="tabbtn '+(state.tab===id?'active':'')+'" data-action="set-tab" data-tab="'+id+'">'+label+'</button>';
+      }).join('') +
+      '</div>';
+    if(state.tab === 'calendar') body += renderCalendarTab();
+    else if(state.tab === 'checklist') body += renderChecklistTab();
+    else body += renderChangesTab();
+    return body;
+  }
+
+  function renderCalendarTab(){
+    var weeks = buildWeeks(state.termStart, state.termEnd);
+    var html = '<div class="card mb-5">';
+    html += '<button class="collapse-header" data-action="toggle-setup"><span class="bold">學期設定與課表範本</span><span>'+(state.setupOpen?'▾':'▸')+'</span></button>';
+    if(state.setupOpen){
+      html += '<div class="collapse-body">';
+      html += '<div class="field"><label>本學期起始日期</label><input type="date" class="input" data-bind="termStart" value="'+state.termStart+'"></div>';
+      html += '<div class="field"><label>本學期結束日期</label><input type="date" class="input" data-bind="termEnd" value="'+state.termEnd+'"></div>';
+      html += '<div class="hint mb-3">'+(weeks.length>0 ? "已產生 "+weeks.length+" 週行事曆" : "請選擇起訖日期以產生行事曆")+'</div>';
+      html += '<div class="hint mb-2">每週固定課表範本（選擇週幾，再設定各時段對應班級）</div>';
+      html += '<div class="tabrow">'+ WEEKDAY_LABELS.map(function(w,i){
+        return '<button class="chip '+(state.templateActiveDay===i?'chip-active':'')+'" data-action="set-template-day" data-day="'+i+'">'+w+'</button>';
+      }).join('') + '</div>';
+      html += '<div class="slotlist">' + SLOTS.map(function(slot){
+        var opts = CLASS_LIST.map(function(c){
+          return '<option value="'+c+'" '+(state.template[state.templateActiveDay][slot]===c?'selected':'')+'>'+c+'</option>';
+        }).join('');
+        return '<div class="slotrow"><div class="slotlabel">'+slot+'</div>'+
+          '<select class="select" data-action="set-template-value" data-slot="'+slot+'"><option value="">未排課</option>'+opts+'</select></div>';
+      }).join('') + '</div>';
+      html += '<div class="mt-4"><div class="hint mb-2">課表範本總覽（請確認週一～週五皆已設定）</div><div class="overview-grid"><div></div>' +
+        WEEKDAY_LABELS.map(function(w){ return '<div class="ov-head">'+w+'</div>'; }).join('');
+      SLOTS.forEach(function(slot){
+        html += '<div class="ov-slot">'+slot+'</div>';
+        for(var wd=0; wd<5; wd++){
+          var v = state.template[wd][slot];
+          html += '<div class="ov-cell '+(v?'ov-filled':'')+'">'+(v||'-')+'</div>';
+        }
+      });
+      html += '</div></div>';
+      html += '</div>';
+    }
+    html += '</div>';
+
+    if(weeks.length === 0){
+      html += '<div class="empty-box">尚未設定學期起訖日期，請先於上方展開設定。</div>';
+      return html;
+    }
+
+    var weekIdxSafe = Math.min(state.currentWeekIndex, weeks.length-1);
+    var week = weeks[weekIdxSafe];
+    var firstDate = week.days[0].dateStr;
+    var lastDate = week.days[week.days.length-1].dateStr;
+
+    html += '<div class="weeknav">' +
+      '<button class="navbtn '+(weekIdxSafe===0?'disabled':'')+'" data-action="prev-week" '+(weekIdxSafe===0?'disabled':'')+'>◀ 上一週</button>' +
+      '<div class="weektitle"><div class="weeknum">Week '+week.weekIndex+'</div><div class="weekrange">'+firstDate+' ～ '+lastDate+'</div></div>' +
+      '<button class="navbtn '+(weekIdxSafe===weeks.length-1?'disabled':'')+'" data-action="next-week" '+(weekIdxSafe===weeks.length-1?'disabled':'')+'>下一週 ▶</button>' +
+      '</div>';
+
+    if(state.reminders[week.mondayStr]){
+      html += '<div class="reminder-box">提醒：'+escapeHtml(state.reminders[week.mondayStr])+'</div>';
+    }
+
+    html += '<div class="card p-3 mb-4"><div class="weekgrid">';
+    html += '<div class="wg-cell wg-head"></div>';
+    week.days.forEach(function(d){
+      var isHoliday = !!state.holidayNames[d.dateStr];
+      html += '<div class="wg-cell wg-head '+(isHoliday?'wg-holiday-head':'')+'">'+WEEKDAY_LABELS[d.weekdayIdx]+'<br><span class="wg-date">'+d.dateStr.slice(5)+'</span></div>';
+    });
+    SLOTS.forEach(function(slot){
+      html += '<div class="wg-cell wg-slot">'+slot+'</div>';
+      week.days.forEach(function(d){
+        var cell = getEffective(d.dateStr, d.weekdayIdx, slot);
+        html += '<div class="wg-cell wg-content '+cellClassName(cell)+'">'+(escapeHtml(cell.content) || '—')+'</div>';
+      });
+    });
+    html += '</div></div>';
+
+    html += '<div class="notes-box"><div class="notes-title">重點紀錄</div>' +
+      '<textarea class="textarea" rows="4" placeholder="本週重點..." data-action="save-keynotes" data-week="'+week.mondayStr+'">'+escapeHtml(state.keyNotes[week.mondayStr]||'')+'</textarea></div>';
+
+    html += '<div class="legend">' +
+      CLASS_LIST.map(function(c){ return '<span><span class="dot cls-'+c+'"></span>'+c+'</span>'; }).join('') +
+      '<span><span class="dot cls-other"></span>其他</span>' +
+      '</div>';
+
+    return html;
+  }
+
+  function renderChecklistTab(){
+    var html = '';
+    if(state.checklist.length === 0){
+      html += '<div class="empty-box mb-4">尚無 Check List 項目，請在下方新增第一個項目。</div>';
+    } else {
+      var sorted = sortedChecklist();
+      html += '<div class="card p-4 mb-4">';
+      html += '<div class="checklist-header"><div></div>' + CLASS_LIST.map(function(c){ return '<div class="ck-head">'+c.slice(1)+'</div>'; }).join('') + '</div>';
+      html += '<div class="checklist-body">';
+      sorted.forEach(function(item){
+        html += '<div class="checklist-row"><div><div class="ck-itemname">'+escapeHtml(item.name)+'</div>'+(item.completedAt?'<div class="ck-done">已完成</div>':'')+'</div>';
+        CLASS_LIST.forEach(function(cls){
+          var cell = item.classes[cls];
+          var cellCls = 'ck-cell'; var content = '';
+          if(cell.status === 'colored'){ cellCls += ' ck-colored cls-' + cls; content = '✓'; }
+          else if(cell.status === 'detail'){ cellCls += ' ck-detail'; content = shortDate(cell.date); }
+          else { cellCls += ' ck-empty'; content = '+'; }
+          html += '<button class="'+cellCls+'" data-action="open-editor" data-item="'+item.id+'" data-cls="'+cls+'">'+content+'</button>';
+        });
+        html += '</div>';
+      });
+      html += '</div></div>';
+    }
+
+    html += '<div class="card p-4"><h3 class="section-title">📋 課程內容</h3><div class="stack-sm">' +
+      '<input class="input" id="f-course-name" placeholder="輸入項目名稱，如：第三課習作">' +
+      '<button class="btn btn-teal" data-action="add-course">➕ 新增至 Check List</button>' +
+      '</div></div>';
+
+    return html;
+  }
+
+  function renderEditorModal(){
+    var item = state.checklist.filter(function(i){ return i.id === state.editingCell.itemId; })[0];
+    if(!item) return '';
+    var cls = state.editingCell.cls;
+    var cell = item.classes[cls];
+    return '<div class="modal-overlay">' +
+      '<div class="modal">' +
+        '<div class="modal-title">'+escapeHtml(item.name)+' · '+cls+'</div>' +
+        '<label class="label">日期</label>' +
+        dateInputHtml('editDate', state.editDate, 'mb-3') +
+        '<label class="label">細節內容（選填）</label>' +
+        '<textarea class="textarea mb-4" id="editor-text" rows="3">'+escapeHtml(cell.text||'')+'</textarea>' +
+        '<div class="modal-actions">' +
+          '<button class="btn btn-dark btn-sm" data-action="save-cell" data-status="detail">儲存細節</button>' +
+          '<button class="btn btn-green btn-sm" data-action="save-cell" data-status="colored">標記完成（變色）</button>' +
+          '<button class="btn btn-light btn-sm" data-action="clear-cell">清除</button>' +
+          '<button class="btn btn-text btn-sm" data-action="close-editor">取消</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderChangesTab(){
+    var html = '<div class="stack">';
+
+    var actCurrent = (state.actDate && state.actSlot) ? getEffective(state.actDate, weekdayIdxMonFri(state.actDate), state.actSlot) : null;
+    var actBody = '<div class="stack-sm">' +
+      '<div class="field"><label>日期（限學期內週一～週五）</label>'+dateInputHtml('actDate', state.actDate)+'</div>' +
+      '<div class="field"><label>時段</label>'+selectHtml('actSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.actSlot)+'</div>' +
+      ((state.actDate && state.actSlot) ? '<div class="muted">該時段目前內容：'+(escapeHtml(actCurrent.content)||'（無）')+'</div>' : '') +
+      '<div class="field"><label>班級</label>'+selectHtml('actClass', CLASS_LIST.map(function(c){return {value:c,label:c};}), state.actClass)+'</div>' +
+      '<div class="field"><label>活動名稱</label><input class="input" id="f-act-name" placeholder="如：校外教學"></div>' +
+      '<button class="btn btn-sky" data-action="add-activity">加入活動</button>' +
+      '</div>';
+    html += moduleCard('📅', '活動', 'activity', actBody);
+
+    var remBody = '<div class="stack-sm">' +
+      '<div class="field"><label>日期（將顯示於該日期所屬週次）</label>'+dateInputHtml('remDate', state.remDate)+'</div>' +
+      '<div class="field"><label>提醒內容</label><input class="input" id="f-rem-text" placeholder="如：週五交作業"></div>' +
+      '<button class="btn btn-amber" data-action="add-reminder">加入提醒</button>' +
+      '</div>';
+    html += moduleCard('📌', '提醒事項', 'reminder', remBody);
+
+    var swapACurrent = (state.swapADate && state.swapASlot) ? getEffective(state.swapADate, weekdayIdxMonFri(state.swapADate), state.swapASlot) : null;
+    var swapBCurrent = (state.swapBDate && state.swapBSlot) ? getEffective(state.swapBDate, weekdayIdxMonFri(state.swapBDate), state.swapBSlot) : null;
+    var swapBody = '<div class="stack-sm">' +
+      '<div class="swapbox"><div class="swapbox-title">時段 A</div><div class="stack-sm">' +
+        dateInputHtml('swapADate', state.swapADate) +
+        selectHtml('swapASlot', SLOTS.map(function(s){return {value:s,label:s};}), state.swapASlot) +
+        selectHtml('swapAClass', CLASS_LIST.map(function(c){return {value:c,label:c};}), state.swapAClass) +
+        '</div>' + ((state.swapADate && state.swapASlot) ? '<div class="muted mt-2">目前內容：'+(escapeHtml(swapACurrent.content)||'（無）')+'</div>' : '') + '</div>' +
+      '<div class="swapbox"><div class="swapbox-title">時段 B</div><div class="stack-sm">' +
+        dateInputHtml('swapBDate', state.swapBDate) +
+        selectHtml('swapBSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.swapBSlot) +
+        selectHtml('swapBClass', CLASS_LIST.map(function(c){return {value:c,label:c};}), state.swapBClass) +
+        '</div>' + ((state.swapBDate && state.swapBSlot) ? '<div class="muted mt-2">目前內容：'+(escapeHtml(swapBCurrent.content)||'（無）')+'</div>' : '') + '</div>' +
+      '<button class="btn btn-violet" data-action="swap-classes">交換內容</button>' +
+      '</div>';
+    html += moduleCard('🔀', '調課', 'swap', swapBody);
+
+    var chgCurrent = (state.chgDate && state.chgSlot) ? getEffective(state.chgDate, weekdayIdxMonFri(state.chgDate), state.chgSlot) : null;
+    var chgBody = '<div class="stack-sm">' +
+      '<div class="field"><label>日期</label>'+dateInputHtml('chgDate', state.chgDate)+'</div>' +
+      '<div class="field"><label>時段</label>'+selectHtml('chgSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.chgSlot)+'</div>' +
+      '<div class="field"><label>班級</label>'+selectHtml('chgClass', CLASS_LIST.map(function(c){return {value:c,label:c};}), state.chgClass)+'</div>' +
+      ((state.chgDate && state.chgSlot) ? '<div class="muted">該時段目前內容：'+(escapeHtml(chgCurrent.content)||'（無）')+'</div>' : '') +
+      '<div class="field"><label>異動內容</label><input class="input" id="f-chg-content" placeholder="如：代課老師／改上自習"></div>' +
+      '<button class="btn btn-orange" data-action="change-course">送出異動</button>' +
+      '</div>';
+    html += moduleCard('✏️', '課程異動', 'change', chgBody);
+
+    var holBody = '<div class="stack-sm">' +
+      '<div class="field"><label>日期</label>'+dateInputHtml('holDate', state.holDate)+'</div>' +
+      '<div class="field"><label>假期名稱</label><input class="input" id="f-hol-name" placeholder="如：教師節"></div>' +
+      '<button class="btn btn-rose" data-action="set-holiday">設定放假</button>' +
+      '</div>';
+    html += moduleCard('🏖️', '放假', 'holiday', holBody);
+
+    var endBody;
+    if(!state.endSemOpen){
+      endBody = '<button class="btn btn-rose btn-block" data-action="toggle-endsem">學期結束，重新初始化系統</button>';
+    } else {
+      endBody = '<div class="stack-sm">' +
+        '<p class="muted">此操作將清空所有行事曆、Check List 與異動紀錄，下次進入需重新輸入。請輸入學期結束日期以確認：</p>' +
+        '<input type="date" class="input" id="f-endsem-date">' +
+        '<button class="btn btn-rose btn-block" data-action="confirm-endsem">確認結束並重置</button>' +
+        '<button class="btn btn-light btn-block" data-action="cancel-endsem">取消</button>' +
+        '</div>';
+    }
+    html += moduleCard('🔄', '學期結束', 'endsem', endBody, 'rose-card', 'rose-title');
+
+    html += '</div>';
+    return html;
+  }
+
+  function render(){
+    document.getElementById('root').innerHTML = renderApp();
+    var overlayHost = document.getElementById('modal-host');
+    if(overlayHost) overlayHost.remove();
+    if(state.editingCell){
+      var host = document.createElement('div');
+      host.id = 'modal-host';
+      host.innerHTML = renderEditorModal();
+      document.body.appendChild(host);
+    }
+  }
+
+  // ---------- Actions ----------
+  function addCourseItem(){
+    var el = document.getElementById('f-course-name');
+    var val = el ? el.value.trim() : '';
+    if(!val){ toast('請輸入項目名稱'); return; }
+    state.checklist.push({ id: genId(), name: val, classes: emptyClasses(), createdAt: Date.now(), completedAt: null });
+    saveToStorage(); render();
+    toast('已新增 Check List 項目：'+val);
+  }
+  function addActivity(){
+    var el = document.getElementById('f-act-name');
+    var name = el ? el.value.trim() : '';
+    var dateStr = state.actDate, slot = state.actSlot, cls = state.actClass;
+    if(!dateStr || !slot || !cls || !name){ toast('請完整輸入日期、時段、班級、活動名稱'); return; }
+    state.overrides[dateStr+'__'+slot] = { content: cls+'／'+name, type: 'activity' };
+    state.actDate=''; state.actSlot=''; state.actClass='';
+    saveToStorage(); render();
+    toast('已加入活動');
+  }
+  function addReminderAction(){
+    var el = document.getElementById('f-rem-text');
+    var text = el ? el.value.trim() : '';
+    var dateStr = state.remDate;
+    if(!dateStr || !text){ toast('請選擇日期並輸入提醒內容'); return; }
+    var monday = mondayOf(dateStr);
+    var old = state.reminders[monday];
+    state.reminders[monday] = old ? old+'、'+text : text;
+    state.remDate = '';
+    saveToStorage(); render();
+    toast('已加入提醒事項');
+  }
+  function swapClassesAction(){
+    var dateA=state.swapADate, slotA=state.swapASlot, clsA=state.swapAClass;
+    var dateB=state.swapBDate, slotB=state.swapBSlot, clsB=state.swapBClass;
+    if(!dateA||!slotA||!clsA||!dateB||!slotB||!clsB){ toast('請完整選擇兩組日期、時段、班級'); return; }
+    if(dateA===dateB && slotA===slotB){ toast('請選擇兩個不同的時段'); return; }
+    var wA = weekdayIdxMonFri(dateA), wB = weekdayIdxMonFri(dateB);
+    var a = getEffective(dateA, wA, slotA);
+    var b = getEffective(dateB, wB, slotB);
+    state.overrides[dateA+'__'+slotA] = { content: b.content, type: b.type==='empty' ? 'empty' : 'change' };
+    state.overrides[dateB+'__'+slotB] = { content: a.content, type: a.type==='empty' ? 'empty' : 'change' };
+    state.swapADate=''; state.swapASlot=''; state.swapAClass='';
+    state.swapBDate=''; state.swapBSlot=''; state.swapBClass='';
+    saveToStorage(); render();
+    toast('已完成調課');
+  }
+  function changeCourseAction(){
+    var el = document.getElementById('f-chg-content');
+    var content = el ? el.value.trim() : '';
+    var dateStr = state.chgDate, slot = state.chgSlot, cls = state.chgClass;
+    if(!dateStr||!slot||!cls||!content){ toast('請完整輸入日期、時段、班級、異動內容'); return; }
+    state.overrides[dateStr+'__'+slot] = { content: content, type: 'change' };
+    state.chgDate=''; state.chgSlot=''; state.chgClass='';
+    saveToStorage(); render();
+    toast('已完成課程異動');
+  }
+  function setHolidayAction(){
+    var el = document.getElementById('f-hol-name');
+    var name = el ? el.value.trim() : '';
+    var dateStr = state.holDate;
+    if(!dateStr||!name){ toast('請輸入日期與假期名稱'); return; }
+    SLOTS.forEach(function(s){
+      state.overrides[dateStr+'__'+s] = (s === 'M') ? { content:name, type:'holiday' } : { content:'', type:'holiday-empty' };
+    });
+    state.holidayNames[dateStr] = name;
+    state.holDate = '';
+    saveToStorage(); render();
+    toast('已設定放假：'+name);
+  }
+  function endSemester(){
+    var el = document.getElementById('f-endsem-date');
+    var val = el ? el.value : '';
+    if(!val){ toast('請輸入日期'); return; }
+    state.termStart=''; state.termEnd=''; state.template=emptyTemplate();
+    state.overrides={}; state.holidayNames={}; state.reminders={}; state.keyNotes={};
+    state.checklist=[]; state.currentWeekIndex=0; state.endSemOpen=false; state.setupOpen=true; state.tab='calendar';
+    saveToStorage(); render();
+    toast('學期已結束，系統已重新初始化');
+  }
+  function openEditor(itemId, cls){
+    var item = state.checklist.filter(function(i){ return i.id===itemId; })[0];
+    if(!item) return;
+    state.editingCell = { itemId: itemId, cls: cls };
+    state.editDate = item.classes[cls].date || '';
+    render();
+  }
+  function closeEditor(){ state.editingCell = null; state.editDate=''; render(); }
+  function saveCell(status){
+    if(!state.editingCell) return;
+    if(!state.editDate){ toast('請選擇日期'); return; }
+    var textEl = document.getElementById('editor-text');
+    var textVal = textEl ? textEl.value : '';
+    var item = state.checklist.filter(function(i){ return i.id===state.editingCell.itemId; })[0];
+    if(!item) return;
+    item.classes[state.editingCell.cls] = { status: status, date: state.editDate, text: textVal };
+    var allColored = CLASS_LIST.every(function(c){ return item.classes[c].status === 'colored'; });
+    item.completedAt = allColored ? (item.completedAt || Date.now()) : null;
+    state.editingCell = null; state.editDate='';
+    saveToStorage(); render();
+  }
+  function clearCell(){
+    if(!state.editingCell) return;
+    var item = state.checklist.filter(function(i){ return i.id===state.editingCell.itemId; })[0];
+    if(!item) return;
+    item.classes[state.editingCell.cls] = { status:'empty', date:'', text:'' };
+    item.completedAt = null;
+    state.editingCell = null; state.editDate='';
+    saveToStorage(); render();
+  }
+
+  // ---------- Event delegation ----------
+  function onRootClick(e){
+    var btn = e.target.closest ? e.target.closest('[data-action]') : null;
+    if(!btn) return;
+    var action = btn.getAttribute('data-action');
+    switch(action){
+      case 'set-tab': state.tab = btn.getAttribute('data-tab'); render(); break;
+      case 'toggle-setup': state.setupOpen = !state.setupOpen; render(); break;
+      case 'set-template-day': state.templateActiveDay = parseInt(btn.getAttribute('data-day'),10); render(); break;
+      case 'prev-week': state.currentWeekIndex = Math.max(0, state.currentWeekIndex-1); render(); break;
+      case 'next-week': {
+        var weeks = buildWeeks(state.termStart, state.termEnd);
+        state.currentWeekIndex = Math.min(weeks.length-1, state.currentWeekIndex+1);
+        render(); break;
+      }
+      case 'add-course': addCourseItem(); break;
+      case 'add-activity': addActivity(); break;
+      case 'add-reminder': addReminderAction(); break;
+      case 'swap-classes': swapClassesAction(); break;
+      case 'change-course': changeCourseAction(); break;
+      case 'set-holiday': setHolidayAction(); break;
+      case 'toggle-endsem': state.endSemOpen = true; render(); break;
+      case 'cancel-endsem': state.endSemOpen = false; render(); break;
+      case 'confirm-endsem': endSemester(); break;
+      case 'toggle-section': {
+        var key = btn.getAttribute('data-key');
+        state.sectionOpen[key] = !state.sectionOpen[key];
+        render(); break;
+      }
+      case 'open-editor': openEditor(btn.getAttribute('data-item'), btn.getAttribute('data-cls')); break;
+      case 'close-editor': closeEditor(); break;
+      case 'save-cell': saveCell(btn.getAttribute('data-status')); break;
+      case 'clear-cell': clearCell(); break;
+      default: break;
+    }
+  }
+  function onDocClick(e){
+    var overlay = e.target.closest ? e.target.closest('.modal-overlay') : null;
+    if(overlay && e.target === overlay){ closeEditor(); }
+  }
+  function onChange(e){
+    var el = e.target;
+    if(!el || !el.getAttribute) return;
+    var action = el.getAttribute('data-action');
+    if(action === 'set-field'){
+      state[el.getAttribute('data-field')] = el.value;
+      render();
+      return;
+    }
+    if(action === 'set-date-field'){
+      var field = el.getAttribute('data-field');
+      var val = el.value;
+      var v = validateSchoolDate(val);
+      if(!v.ok){ toast(v.msg); el.value = state[field] || ''; return; }
+      state[field] = val;
+      render();
+      return;
+    }
+    if(action === 'set-template-value'){
+      state.template[state.templateActiveDay][el.getAttribute('data-slot')] = el.value;
+      saveToStorage(); render();
+      return;
+    }
+    var bind = el.getAttribute('data-bind');
+    if(bind === 'termStart'){ state.termStart = el.value; saveToStorage(); render(); return; }
+    if(bind === 'termEnd'){ state.termEnd = el.value; saveToStorage(); render(); return; }
+  }
+  function onFocusOut(e){
+    var el = e.target;
+    if(!el || !el.getAttribute) return;
+    if(el.getAttribute('data-action') === 'save-keynotes'){
+      var week = el.getAttribute('data-week');
+      state.keyNotes[week] = el.value;
+      saveToStorage();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    var restored = loadFromStorage();
+    render();
+    if(restored) toast('已還原先前儲存的資料');
+    document.body.addEventListener('click', onRootClick);
+    document.body.addEventListener('click', onDocClick);
+    document.body.addEventListener('change', onChange);
+    document.body.addEventListener('focusout', onFocusOut);
+  });
+})();
+</script>
+</body>
+</html>
