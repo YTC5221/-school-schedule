@@ -71,7 +71,6 @@
   .cellcontent{ flex:1; min-width:0; font-size:16px; border-radius:10px; padding:7px 11px; word-break:break-word; }
   .cell-empty{ color:#d6d3d1; }
   .cell-class{ color:#44403c; }
-  .cell-activity{ background:var(--sky-bg); color:#075985; font-style:italic; }
   .cell-change{ background:var(--amber-bg2); color:#92400e; font-weight:700; }
   .cell-holiday{ background:var(--rose-bg2); color:var(--rose); font-weight:800; }
   .cell-holiday-empty{ background:var(--rose-bg); color:#fecdd3; }
@@ -106,6 +105,7 @@
   .wg-head{ font-weight:800; color:#57534e; background:#fafaf9; padding:7px 2px; }
   .wg-date{ font-size:9px; font-weight:400; color:#a8a29e; }
   .wg-holiday-head{ background:var(--rose-bg); color:var(--rose); }
+  .wg-outrange-head{ opacity:0.45; }
   .wg-slot{ font-weight:800; color:var(--teal); background:#f0fdfa; display:flex; align-items:center; justify-content:center; }
   .wg-content{ border:1px solid #f2f1ef; min-height:32px; display:flex; align-items:center; justify-content:center; }
   .daydate{ font-size:12px; font-weight:400; color:var(--faint); }
@@ -116,7 +116,6 @@
   .legend{ display:flex; flex-wrap:wrap; gap:12px; font-size:13px; color:var(--muted); margin-bottom:16px; }
   .legend span{ display:flex; align-items:center; gap:6px; }
   .dot{ width:14px; height:14px; border-radius:4px; display:inline-block; }
-  .dot-activity{ background:var(--sky-bg); border:1px solid #bae6fd; }
   .dot-change{ background:var(--amber-bg2); border:1px solid #fde68a; }
   .dot-holiday{ background:var(--rose-bg2); border:1px solid #fecdd3; }
 
@@ -126,7 +125,7 @@
   .ck-head{ text-align:center; font-size:12px; font-weight:800; color:var(--faint); }
   .ck-itemname{ font-size:14px; font-weight:700; color:#44403c; word-break:break-word; line-height:1.3; text-align:left; }
   .ck-done{ font-size:11px; color:var(--emerald); margin-top:2px; }
-  .ck-cell{ aspect-ratio:1/1; width:100%; border-radius:11px; border:2px solid; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; font-family:inherit; cursor:pointer; padding:0; }
+  .ck-cell{ aspect-ratio:1/1; width:100%; border-radius:11px; border:2px solid; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; font-family:inherit; cursor:pointer; padding:0; overflow:hidden; white-space:nowrap; line-height:1; }
   .ck-empty{ background:#fafaf9; border-color:var(--border2); border-style:dashed; color:#d6d3d1; }
   .ck-detail{ background:#ececea; border-color:var(--border2); color:#57534e; }
   .ck-colored{ border-width:2px; font-weight:800; }
@@ -251,11 +250,14 @@
     while(cur <= end && guard < 400){
       guard++;
       var days = [];
+      var hasInRange = false;
       for(var i=0;i<5;i++){
         var d = addDays(cur, i);
-        if(d >= start && d <= end){ days.push({ date:d, dateStr:formatDate(d), weekdayIdx:i }); }
+        var inRange = (d >= start && d <= end);
+        if(inRange) hasInRange = true;
+        days.push({ date:d, dateStr:formatDate(d), weekdayIdx:i, inRange:inRange });
       }
-      if(days.length > 0){ weeks.push({ weekIndex: idx, mondayStr: formatDate(cur), days: days }); idx++; }
+      if(hasInRange){ weeks.push({ weekIndex: idx, mondayStr: formatDate(cur), days: days }); idx++; }
       cur = addDays(cur, 7);
     }
     return weeks;
@@ -300,7 +302,6 @@
     editDate: "",
     editItemId: "",
     datePicker: null,
-    actDate:"", actSlot:"",
     remDate:"",
     swapADate:"", swapASlot:"", swapAClass:"",
     swapBDate:"", swapBSlot:"", swapBClass:"",
@@ -309,7 +310,7 @@
     endSemOpen: false,
     endsemDate: "",
     endsemPdf: "",
-    sectionOpen: { setup:true, activity:false, reminder:false, swap:false, change:false, holiday:false, endsem:false }
+    sectionOpen: { setup:true, reminder:false, swap:false, change:false, holiday:false, backup:false, endsem:false }
   };
 
   function templateOptionNames(){
@@ -454,11 +455,15 @@
     html += '<div class="wg-cell wg-head"></div>';
     week.days.forEach(function(d){
       var isHoliday = !!state.holidayNames[d.dateStr];
-      html += '<div class="wg-cell wg-head '+(isHoliday?'wg-holiday-head':'')+'">'+WEEKDAY_LABELS[d.weekdayIdx]+'<br><span class="wg-date">'+d.dateStr.slice(5)+'</span></div>';
+      html += '<div class="wg-cell wg-head '+(isHoliday?'wg-holiday-head':'')+(d.inRange?'':' wg-outrange-head')+'">'+WEEKDAY_LABELS[d.weekdayIdx]+'<br><span class="wg-date">'+d.dateStr.slice(5)+'</span></div>';
     });
     SLOTS.forEach(function(slot){
       html += '<div class="wg-cell wg-slot">'+slot+'</div>';
       week.days.forEach(function(d){
+        if(!d.inRange){
+          html += '<div class="wg-cell wg-content cls-empty">-</div>';
+          return;
+        }
         var cell = getEffective(d.dateStr, d.weekdayIdx, slot);
         var sa = cellStyleAttrs(cell);
         html += '<div class="wg-cell wg-content '+sa.cls+'" style="'+sa.style+'">'+(escapeHtml(cell.content) || '—')+'</div>';
@@ -543,8 +548,8 @@
         '<label class="label">細節內容（選填）</label>' +
         '<textarea class="textarea mb-4" id="editor-text" rows="3">'+escapeHtml(cell.text||'')+'</textarea>' +
         '<div class="modal-actions">' +
-          '<button class="btn btn-dark btn-sm" data-action="save-cell" data-status="detail">儲存細節</button>' +
-          '<button class="btn btn-green btn-sm" data-action="save-cell" data-status="colored">標記完成（變色）</button>' +
+          '<button class="btn btn-dark btn-sm" data-action="save-cell" data-status="detail">儲存</button>' +
+          '<button class="btn btn-green btn-sm" data-action="save-cell" data-status="colored">標記完成</button>' +
           '<button class="btn btn-light btn-sm" data-action="clear-cell">清除</button>' +
           '<button class="btn btn-text btn-sm" data-action="close-editor">取消</button>' +
         '</div>' +
@@ -586,25 +591,19 @@
   function renderChangesTab(){
     var html = '<div class="stack">';
 
-    var actCurrent = (state.actDate && state.actSlot) ? getEffective(state.actDate, weekdayIdxMonFri(state.actDate), state.actSlot) : null;
-    var actBody = '<div class="stack-sm">' +
-      '<div class="field"><label>日期（限學期內週一～週五）</label>'+dateInputHtml('actDate', state.actDate)+'</div>' +
-      '<div class="field"><label>時段</label>'+selectHtml('actSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.actSlot)+'</div>' +
-      ((state.actDate && state.actSlot) ? '<div class="muted">該時段目前內容：'+(escapeHtml(actCurrent.content)||'（無）')+'</div>' : '') +
-      '<div class="field"><label>活動名稱</label><input class="input" id="f-act-name" placeholder="如：校外教學"></div>' +
-      '<button class="btn btn-sky" data-action="add-activity">加入活動</button>' +
-      '</div>';
-    html += moduleCard('📅', '活動', 'activity', actBody);
-
-    var remBody = '<div class="stack-sm">' +
-      '<div class="field"><label>日期（將顯示於該日期所屬週次）</label>'+dateInputHtml('remDate', state.remDate)+'</div>' +
-      '<div class="field"><label>提醒內容</label><input class="input" id="f-rem-text" placeholder="如：週五交作業"></div>' +
-      '<button class="btn btn-amber" data-action="add-reminder">加入提醒</button>' +
-      '</div>';
-    html += moduleCard('📌', '提醒事項', 'reminder', remBody);
-
     var names = templateOptionNames();
     var classOpts = names.map(function(c){ return {value:c,label:c}; });
+
+    var chgCurrent = (state.chgDate && state.chgSlot) ? getEffective(state.chgDate, weekdayIdxMonFri(state.chgDate), state.chgSlot) : null;
+    var chgBody = '<div class="stack-sm">' +
+      '<div class="field"><label>日期</label>'+dateInputHtml('chgDate', state.chgDate)+'</div>' +
+      '<div class="field"><label>時段</label>'+selectHtml('chgSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.chgSlot)+'</div>' +
+      ((state.chgDate && state.chgSlot) ? '<div class="muted">該時段目前內容：'+(escapeHtml(chgCurrent.content)||'（無）')+'</div>' : '') +
+      '<div class="field"><label>異動內容（手動輸入以修改原內容，亦可用於加入活動）</label><input class="input" id="f-chg-content" placeholder="如：代課老師／改上自習／校外教學"></div>' +
+      '<button class="btn btn-orange" data-action="change-course">送出異動</button>' +
+      '<button class="btn btn-rose" data-action="delete-course">🗑️ 刪除目前內容</button>' +
+      '</div>';
+    html += moduleCard('✏️', '活動／課程異動', 'change', chgBody);
 
     var swapACurrent = (state.swapADate && state.swapASlot) ? getEffective(state.swapADate, weekdayIdxMonFri(state.swapADate), state.swapASlot) : null;
     var swapBCurrent = (state.swapBDate && state.swapBSlot) ? getEffective(state.swapBDate, weekdayIdxMonFri(state.swapBDate), state.swapBSlot) : null;
@@ -623,23 +622,19 @@
       '</div>';
     html += moduleCard('🔀', '調課', 'swap', swapBody);
 
-    var chgCurrent = (state.chgDate && state.chgSlot) ? getEffective(state.chgDate, weekdayIdxMonFri(state.chgDate), state.chgSlot) : null;
-    var chgBody = '<div class="stack-sm">' +
-      '<div class="field"><label>日期</label>'+dateInputHtml('chgDate', state.chgDate)+'</div>' +
-      '<div class="field"><label>時段</label>'+selectHtml('chgSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.chgSlot)+'</div>' +
-      ((state.chgDate && state.chgSlot) ? '<div class="muted">該時段目前內容：'+(escapeHtml(chgCurrent.content)||'（無）')+'</div>' : '') +
-      '<div class="field"><label>異動內容（手動輸入以修改原內容）</label><input class="input" id="f-chg-content" placeholder="如：代課老師／改上自習"></div>' +
-      '<button class="btn btn-orange" data-action="change-course">送出異動</button>' +
-      '<button class="btn btn-rose" data-action="delete-course">🗑️ 刪除目前內容</button>' +
-      '</div>';
-    html += moduleCard('✏️', '課程異動', 'change', chgBody);
-
     var holBody = '<div class="stack-sm">' +
       '<div class="field"><label>日期</label>'+dateInputHtml('holDate', state.holDate)+'</div>' +
       '<div class="field"><label>假期名稱</label><input class="input" id="f-hol-name" placeholder="如：教師節"></div>' +
       '<button class="btn btn-rose" data-action="set-holiday">設定放假</button>' +
       '</div>';
     html += moduleCard('🏖️', '放假', 'holiday', holBody);
+
+    var remBody = '<div class="stack-sm">' +
+      '<div class="field"><label>日期（將顯示於該日期所屬週次）</label>'+dateInputHtml('remDate', state.remDate)+'</div>' +
+      '<div class="field"><label>提醒內容</label><input class="input" id="f-rem-text" placeholder="如：週五交作業"></div>' +
+      '<button class="btn btn-amber" data-action="add-reminder">加入提醒</button>' +
+      '</div>';
+    html += moduleCard('📌', '提醒事項', 'reminder', remBody);
 
     // 學期設定與課表範本（倒數第二個模塊，在學期結束上方）
     var weeks = buildWeeks(state.termStart, state.termEnd);
@@ -687,6 +682,19 @@
       setupBody += '<div class="hint">請先選擇起訖日期，再設定課表範本選項</div>';
     }
     html += moduleCard('🗓️', '學期設定與課表範本', 'setup', setupBody);
+
+    var backupBody = '<div class="stack-sm">' +
+      '<p class="muted">匯出：把目前所有資料（行事曆、課表範本、進度、異動紀錄）整理成備份內容，可複製或下載保存，之後可在同一台或其他裝置匯入還原。</p>' +
+      '<button class="btn btn-teal" type="button" data-action="gen-export">產生匯出內容</button>' +
+      '<textarea class="textarea" id="backup-export-text" rows="4" readonly placeholder="按上方按鈕產生匯出內容"></textarea>' +
+      '<button class="btn btn-dark" type="button" data-action="copy-export">📋 複製到剪貼簿</button>' +
+      '<button class="btn btn-light" type="button" data-action="download-export">⬇️ 下載為檔案</button>' +
+      '<div class="hint mt-3">匯入：貼上先前匯出的內容，或直接選擇先前下載的備份檔案，將會覆蓋目前所有資料。</div>' +
+      '<textarea class="textarea" id="backup-import-text" rows="4" placeholder="貼上先前匯出的備份內容"></textarea>' +
+      '<input type="file" accept="application/json,.json" id="backup-import-file" class="input">' +
+      '<button class="btn btn-rose" type="button" data-action="do-import">📥 匯入（將覆蓋目前資料）</button>' +
+      '</div>';
+    html += moduleCard('💾', '匯出／匯入資料', 'backup', backupBody);
 
     var endBody;
     if(!state.endSemOpen){
@@ -742,16 +750,6 @@
     state.editItemId = '';
     saveToStorage(); render();
     toast('已修改項目名稱');
-  }
-  function addActivity(){
-    var el = document.getElementById('f-act-name');
-    var name = el ? el.value.trim() : '';
-    var dateStr = state.actDate, slot = state.actSlot;
-    if(!dateStr || !slot || !name){ toast('請完整輸入日期、時段、活動名稱'); return; }
-    state.overrides[dateStr+'__'+slot] = { content: name, type: 'activity' };
-    state.actDate=''; state.actSlot='';
-    saveToStorage(); render();
-    toast('已加入活動');
   }
   function addReminderAction(){
     var el = document.getElementById('f-rem-text');
@@ -812,6 +810,92 @@
     toast('已設定放假：'+name);
   }
 
+  function currentBackupData(){
+    return {
+      termStart: state.termStart, termEnd: state.termEnd, template: state.template,
+      templateOptions: state.templateOptions,
+      overrides: state.overrides, holidayNames: state.holidayNames, reminders: state.reminders,
+      keyNotes: state.keyNotes, checklist: state.checklist,
+      exportedAt: new Date().toISOString()
+    };
+  }
+  function generateExport(){
+    var el = document.getElementById('backup-export-text');
+    if(el) el.value = JSON.stringify(currentBackupData(), null, 2);
+    toast('已產生匯出內容，可複製或下載');
+  }
+  function copyExport(){
+    var el = document.getElementById('backup-export-text');
+    if(!el || !el.value){ toast('請先按「產生匯出內容」'); return; }
+    el.focus(); el.select();
+    try{ el.setSelectionRange(0, 999999); }catch(e){}
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(el.value).then(function(){
+        toast('已複製到剪貼簿');
+      }).catch(function(){
+        try{ document.execCommand('copy'); toast('已複製到剪貼簿'); }
+        catch(e2){ toast('複製失敗，請長按文字框手動選取複製'); }
+      });
+    } else {
+      try{ document.execCommand('copy'); toast('已複製到剪貼簿'); }
+      catch(e2){ toast('複製失敗，請長按文字框手動選取複製'); }
+    }
+  }
+  function downloadExport(){
+    try{
+      var text = JSON.stringify(currentBackupData(), null, 2);
+      var blob = new Blob([text], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'school-schedule-backup-'+formatDate(new Date())+'.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+      toast('已開始下載備份檔案');
+    }catch(e){
+      toast('下載失敗，請改用「複製到剪貼簿」');
+    }
+  }
+  function applyImportedData(data){
+    if(!data || typeof data !== 'object'){ toast('匯入內容格式不正確'); return false; }
+    state.termStart = data.termStart || '';
+    state.termEnd = data.termEnd || '';
+    state.template = data.template || emptyTemplate();
+    state.templateOptions = data.templateOptions || [];
+    state.overrides = data.overrides || {};
+    state.holidayNames = data.holidayNames || {};
+    state.reminders = data.reminders || {};
+    state.keyNotes = data.keyNotes || {};
+    state.checklist = data.checklist || [];
+    state.currentWeekIndex = 0;
+    saveToStorage();
+    render();
+    toast('匯入完成');
+    return true;
+  }
+  function doImport(){
+    var fileInput = document.getElementById('backup-import-file');
+    if(fileInput && fileInput.files && fileInput.files[0]){
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var data;
+        try{ data = JSON.parse(e.target.result); }
+        catch(err){ toast('檔案內容不是有效的備份格式'); return; }
+        if(!window.confirm('此操作將覆蓋目前所有資料，確定要匯入嗎？')) return;
+        applyImportedData(data);
+      };
+      reader.readAsText(fileInput.files[0]);
+      return;
+    }
+    var textEl = document.getElementById('backup-import-text');
+    var raw = textEl ? textEl.value.trim() : '';
+    if(!raw){ toast('請貼上備份內容，或選擇備份檔案'); return; }
+    var data;
+    try{ data = JSON.parse(raw); }
+    catch(err){ toast('內容不是有效的JSON格式'); return; }
+    if(!window.confirm('此操作將覆蓋目前所有資料，確定要匯入嗎？')) return;
+    applyImportedData(data);
+  }
+
   function buildPrintHtml(){
     var weeks = buildWeeks(state.termStart, state.termEnd);
     var html = '<h1>課務行事曆與進度（'+escapeHtml(state.termStart)+' ～ '+escapeHtml(state.termEnd)+'）</h1>';
@@ -825,6 +909,7 @@
       SLOTS.forEach(function(slot){
         html += '<tr><td>'+slot+'</td>';
         week.days.forEach(function(d){
+          if(!d.inRange){ html += '<td>-</td>'; return; }
           var cell = getEffective(d.dateStr, d.weekdayIdx, slot);
           html += '<td>'+(escapeHtml(cell.content)||'—')+'</td>';
         });
@@ -947,12 +1032,15 @@
       }
       case 'add-course': addCourseItem(); break;
       case 'save-item-edit': saveItemEdit(); break;
-      case 'add-activity': addActivity(); break;
       case 'add-reminder': addReminderAction(); break;
       case 'swap-classes': swapClassesAction(); break;
       case 'change-course': changeCourseAction(); break;
       case 'delete-course': deleteCourseAction(); break;
       case 'set-holiday': setHolidayAction(); break;
+      case 'gen-export': generateExport(); break;
+      case 'copy-export': copyExport(); break;
+      case 'download-export': downloadExport(); break;
+      case 'do-import': doImport(); break;
       case 'toggle-endsem': state.endSemOpen = true; render(); break;
       case 'cancel-endsem': state.endSemOpen = false; render(); break;
       case 'confirm-endsem': endSemester(); break;
@@ -1032,8 +1120,23 @@
     }
   }
 
+  function jumpToCurrentWeek(){
+    var weeks = buildWeeks(state.termStart, state.termEnd);
+    if(weeks.length === 0) return;
+    var todayStr = formatDate(new Date());
+    for(var i=0;i<weeks.length;i++){
+      var w = weeks[i];
+      var lastDay = w.days[w.days.length-1].dateStr;
+      var firstDay = w.days[0].dateStr;
+      if(todayStr >= firstDay && todayStr <= lastDay){ state.currentWeekIndex = i; return; }
+    }
+    if(todayStr < weeks[0].days[0].dateStr){ state.currentWeekIndex = 0; return; }
+    state.currentWeekIndex = weeks.length - 1;
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
     var restored = loadFromStorage();
+    if(restored) jumpToCurrentWeek();
     render();
     if(restored) toast('已還原先前儲存的資料');
     document.body.addEventListener('click', onRootClick);
