@@ -76,13 +76,6 @@
   .cell-holiday{ background:var(--rose-bg2); color:var(--rose); font-weight:800; }
   .cell-holiday-empty{ background:var(--rose-bg); color:#fecdd3; }
 
-  .cls-601{ background:#f5dde1; color:#a23b52; font-weight:700; }
-  .cls-602{ background:#f6e3d0; color:#a3661f; font-weight:700; }
-  .cls-603{ background:#f3edc9; color:#8c7818; font-weight:700; }
-  .cls-604{ background:#dfeade; color:#4a7a52; font-weight:700; }
-  .cls-605{ background:#dbe6ef; color:#3f6690; font-weight:700; }
-  .cls-606{ background:#e6dfef; color:#6a5490; font-weight:700; }
-  .cls-607{ background:#f0dde9; color:#964d80; font-weight:700; }
   .cls-empty{ color:#d6d3d1; }
   .cls-other{ background:#efefed; color:#7a7873; }
 
@@ -127,11 +120,11 @@
   .dot-change{ background:var(--amber-bg2); border:1px solid #fde68a; }
   .dot-holiday{ background:var(--rose-bg2); border:1px solid #fecdd3; }
 
-  .checklist-header{ display:grid; grid-template-columns: 2fr repeat(7,1fr); gap:4px; padding:0 2px 8px; }
-  .checklist-body .checklist-row{ display:grid; grid-template-columns: 2fr repeat(7,1fr); gap:4px; align-items:center; padding:7px 2px; border-bottom:1px solid #f2f1ef; }
+  .checklist-header{ display:grid; grid-template-columns: 2fr; gap:4px; padding:0 2px 8px; }
+  .checklist-body .checklist-row{ display:grid; grid-template-columns: 2fr; gap:4px; align-items:flex-start; padding:7px 2px; border-bottom:1px solid #f2f1ef; }
   .checklist-body .checklist-row:last-child{ border-bottom:none; }
   .ck-head{ text-align:center; font-size:12px; font-weight:800; color:var(--faint); }
-  .ck-itemname{ font-size:14px; font-weight:700; color:#44403c; word-break:break-word; line-height:1.3; }
+  .ck-itemname{ font-size:14px; font-weight:700; color:#44403c; word-break:break-word; line-height:1.3; text-align:left; }
   .ck-done{ font-size:11px; color:var(--emerald); margin-top:2px; }
   .ck-cell{ aspect-ratio:1/1; width:100%; border-radius:11px; border:2px solid; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; font-family:inherit; cursor:pointer; padding:0; }
   .ck-empty{ background:#fafaf9; border-color:var(--border2); border-style:dashed; color:#d6d3d1; }
@@ -168,17 +161,49 @@
 
   .rose-card{ border-color:#fecdd3; }
   .rose-title{ color:var(--rose); }
+
+  /* 課表範本選項列 */
+  .tplopt-row{ display:flex; align-items:center; gap:8px; }
+  .tplopt-row .tplopt-name{ flex:1; }
+  .tplopt-check{ display:flex; align-items:center; gap:4px; font-size:13px; color:var(--muted); white-space:nowrap; }
+  .tplopt-remove{ flex-shrink:0; }
+
+  /* 自訂日期欄位 / 日期選擇器 */
+  .datefield{ display:flex; align-items:center; justify-content:space-between; cursor:pointer; text-align:left; }
+  .datefield-empty{ color:var(--faint); }
+  .datefield-icon{ font-size:14px; margin-left:8px; }
+
+  .datepicker-modal{ max-width:320px; }
+  .dp-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .dp-navbtn{ border:none; background:#f5f5f4; border-radius:10px; width:32px; height:32px; font-size:18px; cursor:pointer; color:var(--teal); font-family:inherit; }
+  .dp-monthlabel{ font-weight:800; font-size:15px; }
+  .dp-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:12px; color:var(--faint); margin-bottom:4px; }
+  .dp-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .dp-cell{ aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; font-size:14px; border:none; background:none; border-radius:10px; cursor:pointer; font-family:inherit; color:var(--ink); padding:0; }
+  .dp-empty{ cursor:default; }
+  .dp-today{ font-weight:800; color:var(--teal); }
+  .dp-selected{ background:var(--teal); color:#fff; font-weight:800; }
+
+  /* 列印 / 輸出PDF */
+  #print-area{ display:none; }
+  .ptable{ width:100%; border-collapse:collapse; margin:8px 0 16px; font-size:12px; }
+  .ptable th,.ptable td{ border:1px solid #ccc; padding:4px 6px; text-align:center; }
+  @media print{
+    body > .wrap, #toast{ display:none !important; }
+    #print-area{ display:block !important; }
+  }
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="header">
       <h1>課務行事曆管理</h1>
-      <p class="subtitle">行事曆・Check List・課程異動（獨立網頁版・資料存在本機瀏覽器）</p>
+      <p class="subtitle">行事曆・進度・輸入異動（獨立網頁版・資料存在本機瀏覽器）</p>
     </div>
     <div id="root"></div>
   </div>
   <div id="toast"></div>
+  <div id="print-area"></div>
 
 <script>
 (function(){
@@ -186,8 +211,19 @@
 
   var WEEKDAY_LABELS = ["週一", "週二", "週三", "週四", "週五"];
   var SLOTS = ["M", "1", "2", "3", "4", "N", "5", "6", "7", "E"];
-  var CLASS_LIST = ["601", "602", "603", "604", "605", "606", "607"];
   var STORAGE_KEY = "school-schedule-state-v1";
+  var COLOR_PALETTE = [
+    {bg:'#f5dde1', fg:'#a23b52'},
+    {bg:'#f6e3d0', fg:'#a3661f'},
+    {bg:'#f3edc9', fg:'#8c7818'},
+    {bg:'#dfeade', fg:'#4a7a52'},
+    {bg:'#dbe6ef', fg:'#3f6690'},
+    {bg:'#e6dfef', fg:'#6a5490'},
+    {bg:'#f0dde9', fg:'#964d80'},
+    {bg:'#e8e6bd', fg:'#6f6f1f'},
+    {bg:'#ecd9c9', fg:'#8f4a26'},
+    {bg:'#dde1e6', fg:'#4a5b68'}
+  ];
 
   var idCounter = 0;
   function genId(){ idCounter += 1; return "id" + idCounter + "_" + Math.random().toString(36).slice(2,8); }
@@ -229,49 +265,79 @@
     for(var i=0;i<5;i++){ t[i]={}; SLOTS.forEach(function(s){ t[i][s]=""; }); }
     return t;
   }
-  function emptyClasses(){
+  function emptyClasses(targets){
     var c = {};
-    CLASS_LIST.forEach(function(cl){ c[cl] = { status:"empty", date:"", text:"" }; });
+    (targets||[]).forEach(function(t){ c[t] = { status:"empty", date:"", text:"" }; });
     return c;
   }
   function escapeHtml(str){
     if(str === undefined || str === null) return "";
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   }
-  function cellClassName(cell){
-    if(cell.type === "empty") return "cls-empty";
-    if(cell.type === "class" && CLASS_LIST.indexOf(cell.content) !== -1){
-      return "cls-" + cell.content;
-    }
-    return "cls-other";
+
+  function monthMatrix(ym){
+    var parts = ym.split('-').map(Number);
+    var year = parts[0], month = parts[1]-1;
+    var first = new Date(year, month, 1);
+    var startOffset = (first.getDay()+6)%7;
+    var daysInMonth = new Date(year, month+1, 0).getDate();
+    var cells = [];
+    for(var i=0;i<startOffset;i++){ cells.push(null); }
+    for(var d=1; d<=daysInMonth; d++){ cells.push(d); }
+    return cells;
   }
 
   var state = {
     tab: "calendar",
     termStart: "", termEnd: "",
     template: emptyTemplate(),
+    templateOptions: [],
     overrides: {}, holidayNames: {}, reminders: {}, keyNotes: {},
     checklist: [],
-    setupOpen: true,
     templateActiveDay: 0,
     currentWeekIndex: 0,
     editingCell: null,
     editDate: "",
-    actDate:"", actSlot:"", actClass:"",
+    editItemId: "",
+    datePicker: null,
+    actDate:"", actSlot:"",
     remDate:"",
     swapADate:"", swapASlot:"", swapAClass:"",
     swapBDate:"", swapBSlot:"", swapBClass:"",
-    chgDate:"", chgSlot:"", chgClass:"",
+    chgDate:"", chgSlot:"",
     holDate:"",
     endSemOpen: false,
-    sectionOpen: { activity:false, reminder:false, swap:false, change:false, holiday:false, endsem:false }
+    endsemDate: "",
+    endsemPdf: "",
+    sectionOpen: { setup:true, activity:false, reminder:false, swap:false, change:false, holiday:false, endsem:false }
   };
+
+  function templateOptionNames(){
+    return state.templateOptions.map(function(o){ return o.name; }).filter(function(n){ return n; });
+  }
+  function checkTargets(){
+    return state.templateOptions.filter(function(o){ return o.isTarget && o.name; }).map(function(o){ return o.name; });
+  }
+  function optionColor(name){
+    var names = templateOptionNames();
+    var idx = names.indexOf(name);
+    if(idx === -1) return null;
+    return COLOR_PALETTE[idx % COLOR_PALETTE.length];
+  }
 
   function getEffective(dateStr, weekdayIdx, slot){
     var key = dateStr + "__" + slot;
     if(state.overrides[key] !== undefined) return state.overrides[key];
     var cls = state.template[weekdayIdx] ? state.template[weekdayIdx][slot] : "";
     return cls ? { content: cls, type: "class" } : { content: "", type: "empty" };
+  }
+  function cellStyleAttrs(cell){
+    if(cell.type === "empty") return { cls:"cls-empty", style:"" };
+    if(cell.type === "class"){
+      var c = optionColor(cell.content);
+      if(c) return { cls:"", style:"background:"+c.bg+";color:"+c.fg+";font-weight:700;" };
+    }
+    return { cls:"cls-other", style:"" };
   }
   function sortedChecklist(){
     return state.checklist.slice().sort(function(a,b){
@@ -285,6 +351,7 @@
   function saveToStorage(){
     var data = {
       termStart: state.termStart, termEnd: state.termEnd, template: state.template,
+      templateOptions: state.templateOptions,
       overrides: state.overrides, holidayNames: state.holidayNames, reminders: state.reminders,
       keyNotes: state.keyNotes, checklist: state.checklist
     };
@@ -298,6 +365,7 @@
         if(data.termStart) state.termStart = data.termStart;
         if(data.termEnd) state.termEnd = data.termEnd;
         if(data.template) state.template = data.template;
+        if(data.templateOptions) state.templateOptions = data.templateOptions;
         if(data.overrides) state.overrides = data.overrides;
         if(data.holidayNames) state.holidayNames = data.holidayNames;
         if(data.reminders) state.reminders = data.reminders;
@@ -332,10 +400,11 @@
     if(weekdayIdxMonFri(dateStr) === -1) return { ok:false, msg:"請選擇週一至週五" };
     return { ok:true };
   }
-  function dateInputHtml(field, value, extraClass){
-    var minAttr = state.termStart ? ' min="'+state.termStart+'"' : '';
-    var maxAttr = state.termEnd ? ' max="'+state.termEnd+'"' : '';
-    return '<input type="date" class="input '+(extraClass||'')+'" data-action="set-date-field" data-field="'+field+'" value="'+(value||'')+'"'+minAttr+maxAttr+'>';
+  function dateInputHtml(field, value, extraClass, mode){
+    mode = mode || 'validated';
+    var display = value ? value : '請選擇日期';
+    return '<button type="button" class="input datefield '+(extraClass||'')+' '+(value?'':'datefield-empty')+'" data-action="open-datepicker" data-field="'+field+'" data-mode="'+mode+'">'+
+      '<span>'+escapeHtml(display)+'</span><span class="datefield-icon">\uD83D\uDCC5</span></button>';
   }
   function moduleCard(icon, title, key, bodyHtml, extraClass, titleClass){
     var open = !!state.sectionOpen[key];
@@ -348,7 +417,7 @@
   function renderApp(){
     var body = '<div class="tabbar">'+
       ['calendar','checklist','changes'].map(function(id){
-        var label = id==='calendar' ? '📅 行事曆' : (id==='checklist' ? '✅ Check List' : '✏️ 輸入・異動');
+        var label = id==='calendar' ? '📅 行事曆' : (id==='checklist' ? '✅ 進度' : '✏️ 輸入・異動');
         return '<button class="tabbtn '+(state.tab===id?'active':'')+'" data-action="set-tab" data-tab="'+id+'">'+label+'</button>';
       }).join('') +
       '</div>';
@@ -360,40 +429,9 @@
 
   function renderCalendarTab(){
     var weeks = buildWeeks(state.termStart, state.termEnd);
-    var html = '<div class="card mb-5">';
-    html += '<button class="collapse-header" data-action="toggle-setup"><span class="bold">學期設定與課表範本</span><span>'+(state.setupOpen?'▾':'▸')+'</span></button>';
-    if(state.setupOpen){
-      html += '<div class="collapse-body">';
-      html += '<div class="field"><label>本學期起始日期</label><input type="date" class="input" data-bind="termStart" value="'+state.termStart+'"></div>';
-      html += '<div class="field"><label>本學期結束日期</label><input type="date" class="input" data-bind="termEnd" value="'+state.termEnd+'"></div>';
-      html += '<div class="hint mb-3">'+(weeks.length>0 ? "已產生 "+weeks.length+" 週行事曆" : "請選擇起訖日期以產生行事曆")+'</div>';
-      html += '<div class="hint mb-2">每週固定課表範本（選擇週幾，再設定各時段對應班級）</div>';
-      html += '<div class="tabrow">'+ WEEKDAY_LABELS.map(function(w,i){
-        return '<button class="chip '+(state.templateActiveDay===i?'chip-active':'')+'" data-action="set-template-day" data-day="'+i+'">'+w+'</button>';
-      }).join('') + '</div>';
-      html += '<div class="slotlist">' + SLOTS.map(function(slot){
-        var opts = CLASS_LIST.map(function(c){
-          return '<option value="'+c+'" '+(state.template[state.templateActiveDay][slot]===c?'selected':'')+'>'+c+'</option>';
-        }).join('');
-        return '<div class="slotrow"><div class="slotlabel">'+slot+'</div>'+
-          '<select class="select" data-action="set-template-value" data-slot="'+slot+'"><option value="">未排課</option>'+opts+'</select></div>';
-      }).join('') + '</div>';
-      html += '<div class="mt-4"><div class="hint mb-2">課表範本總覽（請確認週一～週五皆已設定）</div><div class="overview-grid"><div></div>' +
-        WEEKDAY_LABELS.map(function(w){ return '<div class="ov-head">'+w+'</div>'; }).join('');
-      SLOTS.forEach(function(slot){
-        html += '<div class="ov-slot">'+slot+'</div>';
-        for(var wd=0; wd<5; wd++){
-          var v = state.template[wd][slot];
-          html += '<div class="ov-cell '+(v?'ov-filled':'')+'">'+(v||'-')+'</div>';
-        }
-      });
-      html += '</div></div>';
-      html += '</div>';
-    }
-    html += '</div>';
-
+    var html = '';
     if(weeks.length === 0){
-      html += '<div class="empty-box">尚未設定學期起訖日期，請先於上方展開設定。</div>';
+      html += '<div class="empty-box">尚未設定學期起訖日期，請先於「輸入・異動」分頁展開「學期設定與課表範本」。</div>';
       return html;
     }
 
@@ -409,7 +447,7 @@
       '</div>';
 
     if(state.reminders[week.mondayStr]){
-      html += '<div class="reminder-box">提醒：'+escapeHtml(state.reminders[week.mondayStr])+'</div>';
+      html += '<div class="reminder-box">⭐'+escapeHtml(state.reminders[week.mondayStr])+'</div>';
     }
 
     html += '<div class="card p-3 mb-4"><div class="weekgrid">';
@@ -422,7 +460,8 @@
       html += '<div class="wg-cell wg-slot">'+slot+'</div>';
       week.days.forEach(function(d){
         var cell = getEffective(d.dateStr, d.weekdayIdx, slot);
-        html += '<div class="wg-cell wg-content '+cellClassName(cell)+'">'+(escapeHtml(cell.content) || '—')+'</div>';
+        var sa = cellStyleAttrs(cell);
+        html += '<div class="wg-cell wg-content '+sa.cls+'" style="'+sa.style+'">'+(escapeHtml(cell.content) || '—')+'</div>';
       });
     });
     html += '</div></div>';
@@ -430,41 +469,62 @@
     html += '<div class="notes-box"><div class="notes-title">重點紀錄</div>' +
       '<textarea class="textarea" rows="4" placeholder="本週重點..." data-action="save-keynotes" data-week="'+week.mondayStr+'">'+escapeHtml(state.keyNotes[week.mondayStr]||'')+'</textarea></div>';
 
-    html += '<div class="legend">' +
-      CLASS_LIST.map(function(c){ return '<span><span class="dot cls-'+c+'"></span>'+c+'</span>'; }).join('') +
-      '<span><span class="dot cls-other"></span>其他</span>' +
-      '</div>';
+    var names = templateOptionNames();
+    if(names.length){
+      html += '<div class="legend">' +
+        names.map(function(n){
+          var c = optionColor(n);
+          return '<span><span class="dot" style="background:'+(c?c.bg:'#efefed')+';border:1px solid '+(c?c.fg:'#ccc')+'"></span>'+escapeHtml(n)+'</span>';
+        }).join('') +
+        '<span><span class="dot cls-other"></span>其他</span>' +
+        '</div>';
+    }
 
     return html;
   }
 
   function renderChecklistTab(){
     var html = '';
-    if(state.checklist.length === 0){
-      html += '<div class="empty-box mb-4">尚無 Check List 項目，請在下方新增第一個項目。</div>';
+    var targets = checkTargets();
+    if(targets.length === 0){
+      html += '<div class="empty-box mb-4">尚未設定「進度」標的，請先在「輸入・異動」分頁的「學期設定與課表範本」中，勾選課表範本選項作為標的。</div>';
+    } else if(state.checklist.length === 0){
+      html += '<div class="empty-box mb-4">尚無進度項目，請在下方新增第一個項目。</div>';
     } else {
       var sorted = sortedChecklist();
+      var gridStyle = 'grid-template-columns: 2fr repeat('+targets.length+',1fr);';
       html += '<div class="card p-4 mb-4">';
-      html += '<div class="checklist-header"><div></div>' + CLASS_LIST.map(function(c){ return '<div class="ck-head">'+c.slice(1)+'</div>'; }).join('') + '</div>';
+      html += '<div class="checklist-header" style="'+gridStyle+'"><div></div>' + targets.map(function(t){ return '<div class="ck-head">'+escapeHtml(t)+'</div>'; }).join('') + '</div>';
       html += '<div class="checklist-body">';
       sorted.forEach(function(item){
-        html += '<div class="checklist-row"><div><div class="ck-itemname">'+escapeHtml(item.name)+'</div>'+(item.completedAt?'<div class="ck-done">已完成</div>':'')+'</div>';
-        CLASS_LIST.forEach(function(cls){
-          var cell = item.classes[cls];
-          var cellCls = 'ck-cell'; var content = '';
-          if(cell.status === 'colored'){ cellCls += ' ck-colored cls-' + cls; content = '✓'; }
+        html += '<div class="checklist-row" style="'+gridStyle+'"><div><div class="ck-itemname">'+escapeHtml(item.name)+'</div>'+(item.completedAt?'<div class="ck-done">已完成</div>':'')+'</div>';
+        targets.forEach(function(t){
+          var cell = item.classes[t] || { status:'empty', date:'', text:'' };
+          var cellCls = 'ck-cell'; var content = ''; var style = '';
+          if(cell.status === 'colored'){
+            cellCls += ' ck-colored'; content = '✓';
+            var c = optionColor(t);
+            if(c) style = 'background:'+c.bg+';color:'+c.fg+';border-color:'+c.fg+';';
+          }
           else if(cell.status === 'detail'){ cellCls += ' ck-detail'; content = shortDate(cell.date); }
           else { cellCls += ' ck-empty'; content = '+'; }
-          html += '<button class="'+cellCls+'" data-action="open-editor" data-item="'+item.id+'" data-cls="'+cls+'">'+content+'</button>';
+          html += '<button class="'+cellCls+'" style="'+style+'" data-action="open-editor" data-item="'+item.id+'" data-cls="'+escapeHtml(t)+'">'+content+'</button>';
         });
         html += '</div>';
       });
       html += '</div></div>';
     }
 
-    html += '<div class="card p-4"><h3 class="section-title">📋 課程內容</h3><div class="stack-sm">' +
+    html += '<div class="card p-4 mb-4"><h3 class="section-title">📋 課程內容</h3><div class="stack-sm">' +
       '<input class="input" id="f-course-name" placeholder="輸入項目名稱，如：第三課習作">' +
-      '<button class="btn btn-teal" data-action="add-course">➕ 新增至 Check List</button>' +
+      '<button class="btn btn-teal" data-action="add-course">➕ 新增至進度</button>' +
+      '</div></div>';
+
+    var editItem = state.editItemId ? state.checklist.filter(function(i){ return i.id===state.editItemId; })[0] : null;
+    html += '<div class="card p-4"><h3 class="section-title">✏️ 內容修改</h3><div class="stack-sm">' +
+      selectHtml('editItemId', state.checklist.map(function(i){ return { value:i.id, label:i.name }; }), state.editItemId) +
+      (editItem ? '<input class="input" id="f-edit-item-name" value="'+escapeHtml(editItem.name)+'" placeholder="修改項目名稱">' : '') +
+      (editItem ? '<button class="btn btn-dark" data-action="save-item-edit">儲存修改</button>' : '') +
       '</div></div>';
 
     return html;
@@ -474,12 +534,12 @@
     var item = state.checklist.filter(function(i){ return i.id === state.editingCell.itemId; })[0];
     if(!item) return '';
     var cls = state.editingCell.cls;
-    var cell = item.classes[cls];
+    var cell = item.classes[cls] || { status:'empty', date:'', text:'' };
     return '<div class="modal-overlay">' +
       '<div class="modal">' +
-        '<div class="modal-title">'+escapeHtml(item.name)+' · '+cls+'</div>' +
+        '<div class="modal-title">'+escapeHtml(item.name)+' · '+escapeHtml(cls)+'</div>' +
         '<label class="label">日期</label>' +
-        dateInputHtml('editDate', state.editDate, 'mb-3') +
+        '<div class="mb-3">'+dateInputHtml('editDate', state.editDate, '', 'validated')+'</div>' +
         '<label class="label">細節內容（選填）</label>' +
         '<textarea class="textarea mb-4" id="editor-text" rows="3">'+escapeHtml(cell.text||'')+'</textarea>' +
         '<div class="modal-actions">' +
@@ -492,6 +552,37 @@
     '</div>';
   }
 
+  function renderDatePickerModal(){
+    var dp = state.datePicker;
+    if(!dp) return '';
+    var value = state[dp.field] || '';
+    var parts = dp.viewYM.split('-').map(Number);
+    var year = parts[0], monthIdx = parts[1]-1;
+    var monthLabel = year + ' 年 ' + (monthIdx+1) + ' 月';
+    var cells = monthMatrix(dp.viewYM);
+    var todayStr = formatDate(new Date());
+    var html = '<div class="modal-overlay dp-overlay">' +
+      '<div class="modal datepicker-modal">' +
+        '<div class="dp-header">' +
+          '<button class="dp-navbtn" type="button" data-action="dp-prev-month">‹</button>' +
+          '<div class="dp-monthlabel">'+monthLabel+'</div>' +
+          '<button class="dp-navbtn" type="button" data-action="dp-next-month">›</button>' +
+        '</div>' +
+        '<div class="dp-weekdays">' + ['一','二','三','四','五','六','日'].map(function(w){ return '<div>'+w+'</div>'; }).join('') + '</div>' +
+        '<div class="dp-grid">' + cells.map(function(day){
+          if(day === null) return '<div class="dp-cell dp-empty"></div>';
+          var dStr = year+'-'+pad(monthIdx+1)+'-'+pad(day);
+          var isSelected = dStr === value;
+          var isToday = dStr === todayStr;
+          return '<button type="button" class="dp-cell dp-day '+(isSelected?'dp-selected':'')+' '+((isToday && !isSelected)?'dp-today':'')+'" data-action="dp-pick" data-date="'+dStr+'">'+day+'</button>';
+        }).join('') + '</div>' +
+        (value ? '<button class="btn btn-light btn-sm btn-block mt-3" type="button" data-action="dp-clear">清除日期</button>' : '') +
+        '<button class="btn btn-text btn-sm btn-block" type="button" data-action="close-datepicker">關閉</button>' +
+      '</div>' +
+    '</div>';
+    return html;
+  }
+
   function renderChangesTab(){
     var html = '<div class="stack">';
 
@@ -500,7 +591,6 @@
       '<div class="field"><label>日期（限學期內週一～週五）</label>'+dateInputHtml('actDate', state.actDate)+'</div>' +
       '<div class="field"><label>時段</label>'+selectHtml('actSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.actSlot)+'</div>' +
       ((state.actDate && state.actSlot) ? '<div class="muted">該時段目前內容：'+(escapeHtml(actCurrent.content)||'（無）')+'</div>' : '') +
-      '<div class="field"><label>班級</label>'+selectHtml('actClass', CLASS_LIST.map(function(c){return {value:c,label:c};}), state.actClass)+'</div>' +
       '<div class="field"><label>活動名稱</label><input class="input" id="f-act-name" placeholder="如：校外教學"></div>' +
       '<button class="btn btn-sky" data-action="add-activity">加入活動</button>' +
       '</div>';
@@ -513,18 +603,21 @@
       '</div>';
     html += moduleCard('📌', '提醒事項', 'reminder', remBody);
 
+    var names = templateOptionNames();
+    var classOpts = names.map(function(c){ return {value:c,label:c}; });
+
     var swapACurrent = (state.swapADate && state.swapASlot) ? getEffective(state.swapADate, weekdayIdxMonFri(state.swapADate), state.swapASlot) : null;
     var swapBCurrent = (state.swapBDate && state.swapBSlot) ? getEffective(state.swapBDate, weekdayIdxMonFri(state.swapBDate), state.swapBSlot) : null;
     var swapBody = '<div class="stack-sm">' +
       '<div class="swapbox"><div class="swapbox-title">時段 A</div><div class="stack-sm">' +
         dateInputHtml('swapADate', state.swapADate) +
         selectHtml('swapASlot', SLOTS.map(function(s){return {value:s,label:s};}), state.swapASlot) +
-        selectHtml('swapAClass', CLASS_LIST.map(function(c){return {value:c,label:c};}), state.swapAClass) +
+        selectHtml('swapAClass', classOpts, state.swapAClass) +
         '</div>' + ((state.swapADate && state.swapASlot) ? '<div class="muted mt-2">目前內容：'+(escapeHtml(swapACurrent.content)||'（無）')+'</div>' : '') + '</div>' +
       '<div class="swapbox"><div class="swapbox-title">時段 B</div><div class="stack-sm">' +
         dateInputHtml('swapBDate', state.swapBDate) +
         selectHtml('swapBSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.swapBSlot) +
-        selectHtml('swapBClass', CLASS_LIST.map(function(c){return {value:c,label:c};}), state.swapBClass) +
+        selectHtml('swapBClass', classOpts, state.swapBClass) +
         '</div>' + ((state.swapBDate && state.swapBSlot) ? '<div class="muted mt-2">目前內容：'+(escapeHtml(swapBCurrent.content)||'（無）')+'</div>' : '') + '</div>' +
       '<button class="btn btn-violet" data-action="swap-classes">交換內容</button>' +
       '</div>';
@@ -534,10 +627,10 @@
     var chgBody = '<div class="stack-sm">' +
       '<div class="field"><label>日期</label>'+dateInputHtml('chgDate', state.chgDate)+'</div>' +
       '<div class="field"><label>時段</label>'+selectHtml('chgSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.chgSlot)+'</div>' +
-      '<div class="field"><label>班級</label>'+selectHtml('chgClass', CLASS_LIST.map(function(c){return {value:c,label:c};}), state.chgClass)+'</div>' +
       ((state.chgDate && state.chgSlot) ? '<div class="muted">該時段目前內容：'+(escapeHtml(chgCurrent.content)||'（無）')+'</div>' : '') +
-      '<div class="field"><label>異動內容</label><input class="input" id="f-chg-content" placeholder="如：代課老師／改上自習"></div>' +
+      '<div class="field"><label>異動內容（手動輸入以修改原內容）</label><input class="input" id="f-chg-content" placeholder="如：代課老師／改上自習"></div>' +
       '<button class="btn btn-orange" data-action="change-course">送出異動</button>' +
+      '<button class="btn btn-rose" data-action="delete-course">🗑️ 刪除目前內容</button>' +
       '</div>';
     html += moduleCard('✏️', '課程異動', 'change', chgBody);
 
@@ -548,13 +641,61 @@
       '</div>';
     html += moduleCard('🏖️', '放假', 'holiday', holBody);
 
+    // 學期設定與課表範本（倒數第二個模塊，在學期結束上方）
+    var weeks = buildWeeks(state.termStart, state.termEnd);
+    var setupBody = '<div class="field"><label>本學期起始日期</label>'+dateInputHtml('termStart', state.termStart, '', 'plain')+'</div>' +
+      '<div class="field"><label>本學期結束日期</label>'+dateInputHtml('termEnd', state.termEnd, '', 'plain')+'</div>' +
+      '<div class="hint mb-3">'+(weeks.length>0 ? "已產生 "+weeks.length+" 週行事曆" : "請選擇起訖日期以產生行事曆")+'</div>';
+    if(state.termStart && state.termEnd){
+      setupBody += '<div class="hint mb-2">課表範本選項（輸入本學期課表所需的選項名稱，並勾選是否作為「進度」清單的標的）</div>';
+      setupBody += '<div class="stack-sm mb-3">' + state.templateOptions.map(function(opt, idx){
+        return '<div class="tplopt-row">' +
+          '<input class="input tplopt-name" data-action="save-tplopt-name" data-idx="'+idx+'" value="'+escapeHtml(opt.name)+'" placeholder="如：601">' +
+          '<label class="tplopt-check"><input type="checkbox" data-action="toggle-tplopt-target" data-idx="'+idx+'" '+(opt.isTarget?'checked':'')+'>標的</label>' +
+          '<button class="btn-text btn-sm tplopt-remove" type="button" data-action="remove-tplopt" data-idx="'+idx+'">✕</button>' +
+        '</div>';
+      }).join('') + '</div>';
+      setupBody += '<button class="btn btn-light btn-sm mb-3" type="button" data-action="add-tplopt">➕ 新增課表範本選項</button>';
+
+      var curNames = templateOptionNames();
+      if(curNames.length > 0){
+        setupBody += '<div class="hint mb-2">每週固定課表範本（選擇週幾，再設定各時段對應選項）</div>';
+        setupBody += '<div class="tabrow">'+ WEEKDAY_LABELS.map(function(w,i){
+          return '<button class="chip '+(state.templateActiveDay===i?'chip-active':'')+'" data-action="set-template-day" data-day="'+i+'">'+w+'</button>';
+        }).join('') + '</div>';
+        setupBody += '<div class="slotlist">' + SLOTS.map(function(slot){
+          var opts = curNames.map(function(c){
+            return '<option value="'+escapeHtml(c)+'" '+(state.template[state.templateActiveDay][slot]===c?'selected':'')+'>'+escapeHtml(c)+'</option>';
+          }).join('');
+          return '<div class="slotrow"><div class="slotlabel">'+slot+'</div>'+
+            '<select class="select" data-action="set-template-value" data-slot="'+slot+'"><option value="">未排課</option>'+opts+'</select></div>';
+        }).join('') + '</div>';
+        setupBody += '<div class="mt-4"><div class="hint mb-2">課表範本總覽（請確認週一～週五皆已設定）</div><div class="overview-grid"><div></div>' +
+          WEEKDAY_LABELS.map(function(w){ return '<div class="ov-head">'+w+'</div>'; }).join('');
+        SLOTS.forEach(function(slot){
+          setupBody += '<div class="ov-slot">'+slot+'</div>';
+          for(var wd=0; wd<5; wd++){
+            var v = state.template[wd][slot];
+            setupBody += '<div class="ov-cell '+(v?'ov-filled':'')+'">'+(escapeHtml(v)||'-')+'</div>';
+          }
+        });
+        setupBody += '</div></div>';
+      } else {
+        setupBody += '<div class="hint">請先新增至少一個課表範本選項</div>';
+      }
+    } else {
+      setupBody += '<div class="hint">請先選擇起訖日期，再設定課表範本選項</div>';
+    }
+    html += moduleCard('🗓️', '學期設定與課表範本', 'setup', setupBody);
+
     var endBody;
     if(!state.endSemOpen){
       endBody = '<button class="btn btn-rose btn-block" data-action="toggle-endsem">學期結束，重新初始化系統</button>';
     } else {
       endBody = '<div class="stack-sm">' +
-        '<p class="muted">此操作將清空所有行事曆、Check List 與異動紀錄，下次進入需重新輸入。請輸入學期結束日期以確認：</p>' +
-        '<input type="date" class="input" id="f-endsem-date">' +
+        '<p class="muted">此操作將清空所有行事曆、進度與異動紀錄，下次進入需重新輸入。請輸入學期結束日期以確認：</p>' +
+        '<div class="field">'+dateInputHtml('endsemDate', state.endsemDate, '', 'plain')+'</div>' +
+        '<div class="field"><label>是否輸出PDF（本學期行事曆與進度）</label>'+selectHtml('endsemPdf', [{value:'yes',label:'是'},{value:'no',label:'否'}], state.endsemPdf)+'</div>' +
         '<button class="btn btn-rose btn-block" data-action="confirm-endsem">確認結束並重置</button>' +
         '<button class="btn btn-light btn-block" data-action="cancel-endsem">取消</button>' +
         '</div>';
@@ -569,10 +710,13 @@
     document.getElementById('root').innerHTML = renderApp();
     var overlayHost = document.getElementById('modal-host');
     if(overlayHost) overlayHost.remove();
-    if(state.editingCell){
+    if(state.editingCell || state.datePicker){
       var host = document.createElement('div');
       host.id = 'modal-host';
-      host.innerHTML = renderEditorModal();
+      var mhtml = '';
+      if(state.editingCell) mhtml += renderEditorModal();
+      if(state.datePicker) mhtml += renderDatePickerModal();
+      host.innerHTML = mhtml;
       document.body.appendChild(host);
     }
   }
@@ -582,17 +726,30 @@
     var el = document.getElementById('f-course-name');
     var val = el ? el.value.trim() : '';
     if(!val){ toast('請輸入項目名稱'); return; }
-    state.checklist.push({ id: genId(), name: val, classes: emptyClasses(), createdAt: Date.now(), completedAt: null });
+    state.checklist.push({ id: genId(), name: val, classes: emptyClasses(checkTargets()), createdAt: Date.now(), completedAt: null });
     saveToStorage(); render();
-    toast('已新增 Check List 項目：'+val);
+    toast('已新增進度項目：'+val);
+  }
+  function saveItemEdit(){
+    var id = state.editItemId;
+    if(!id){ toast('請選擇要修改的項目'); return; }
+    var el = document.getElementById('f-edit-item-name');
+    var val = el ? el.value.trim() : '';
+    if(!val){ toast('請輸入項目名稱'); return; }
+    var item = state.checklist.filter(function(i){ return i.id===id; })[0];
+    if(!item) return;
+    item.name = val;
+    state.editItemId = '';
+    saveToStorage(); render();
+    toast('已修改項目名稱');
   }
   function addActivity(){
     var el = document.getElementById('f-act-name');
     var name = el ? el.value.trim() : '';
-    var dateStr = state.actDate, slot = state.actSlot, cls = state.actClass;
-    if(!dateStr || !slot || !cls || !name){ toast('請完整輸入日期、時段、班級、活動名稱'); return; }
-    state.overrides[dateStr+'__'+slot] = { content: cls+'／'+name, type: 'activity' };
-    state.actDate=''; state.actSlot=''; state.actClass='';
+    var dateStr = state.actDate, slot = state.actSlot;
+    if(!dateStr || !slot || !name){ toast('請完整輸入日期、時段、活動名稱'); return; }
+    state.overrides[dateStr+'__'+slot] = { content: name, type: 'activity' };
+    state.actDate=''; state.actSlot='';
     saveToStorage(); render();
     toast('已加入活動');
   }
@@ -611,7 +768,7 @@
   function swapClassesAction(){
     var dateA=state.swapADate, slotA=state.swapASlot, clsA=state.swapAClass;
     var dateB=state.swapBDate, slotB=state.swapBSlot, clsB=state.swapBClass;
-    if(!dateA||!slotA||!clsA||!dateB||!slotB||!clsB){ toast('請完整選擇兩組日期、時段、班級'); return; }
+    if(!dateA||!slotA||!clsA||!dateB||!slotB||!clsB){ toast('請完整選擇兩組日期、時段、選項'); return; }
     if(dateA===dateB && slotA===slotB){ toast('請選擇兩個不同的時段'); return; }
     var wA = weekdayIdxMonFri(dateA), wB = weekdayIdxMonFri(dateB);
     var a = getEffective(dateA, wA, slotA);
@@ -626,12 +783,20 @@
   function changeCourseAction(){
     var el = document.getElementById('f-chg-content');
     var content = el ? el.value.trim() : '';
-    var dateStr = state.chgDate, slot = state.chgSlot, cls = state.chgClass;
-    if(!dateStr||!slot||!cls||!content){ toast('請完整輸入日期、時段、班級、異動內容'); return; }
+    var dateStr = state.chgDate, slot = state.chgSlot;
+    if(!dateStr||!slot||!content){ toast('請完整輸入日期、時段、異動內容'); return; }
     state.overrides[dateStr+'__'+slot] = { content: content, type: 'change' };
-    state.chgDate=''; state.chgSlot=''; state.chgClass='';
+    state.chgDate=''; state.chgSlot='';
     saveToStorage(); render();
     toast('已完成課程異動');
+  }
+  function deleteCourseAction(){
+    var dateStr = state.chgDate, slot = state.chgSlot;
+    if(!dateStr||!slot){ toast('請選擇日期與時段'); return; }
+    state.overrides[dateStr+'__'+slot] = { content:'', type:'empty' };
+    state.chgDate=''; state.chgSlot='';
+    saveToStorage(); render();
+    toast('已刪除該時段內容');
   }
   function setHolidayAction(){
     var el = document.getElementById('f-hol-name');
@@ -646,19 +811,72 @@
     saveToStorage(); render();
     toast('已設定放假：'+name);
   }
-  function endSemester(){
-    var el = document.getElementById('f-endsem-date');
-    var val = el ? el.value : '';
-    if(!val){ toast('請輸入日期'); return; }
-    state.termStart=''; state.termEnd=''; state.template=emptyTemplate();
+
+  function buildPrintHtml(){
+    var weeks = buildWeeks(state.termStart, state.termEnd);
+    var html = '<h1>課務行事曆與進度（'+escapeHtml(state.termStart)+' ～ '+escapeHtml(state.termEnd)+'）</h1>';
+    weeks.forEach(function(week){
+      var firstDate = week.days[0].dateStr, lastDate = week.days[week.days.length-1].dateStr;
+      html += '<h2>Week '+week.weekIndex+'（'+firstDate+' ～ '+lastDate+'）</h2>';
+      if(state.reminders[week.mondayStr]){
+        html += '<p>⭐'+escapeHtml(state.reminders[week.mondayStr])+'</p>';
+      }
+      html += '<table class="ptable"><tr><th></th>'+week.days.map(function(d){ return '<th>'+WEEKDAY_LABELS[d.weekdayIdx]+' '+d.dateStr.slice(5)+'</th>'; }).join('')+'</tr>';
+      SLOTS.forEach(function(slot){
+        html += '<tr><td>'+slot+'</td>';
+        week.days.forEach(function(d){
+          var cell = getEffective(d.dateStr, d.weekdayIdx, slot);
+          html += '<td>'+(escapeHtml(cell.content)||'—')+'</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</table>';
+      if(state.keyNotes[week.mondayStr]){
+        html += '<p><strong>重點紀錄：</strong>'+escapeHtml(state.keyNotes[week.mondayStr])+'</p>';
+      }
+    });
+
+    var targets = checkTargets();
+    if(targets.length > 0 && state.checklist.length > 0){
+      html += '<h2>進度</h2><table class="ptable"><tr><th>項目</th>'+targets.map(function(t){ return '<th>'+escapeHtml(t)+'</th>'; }).join('')+'</tr>';
+      sortedChecklist().forEach(function(item){
+        html += '<tr><td>'+escapeHtml(item.name)+'</td>';
+        targets.forEach(function(t){
+          var cell = item.classes[t] || { status:'empty' };
+          var mark = cell.status === 'colored' ? '✓' : (cell.status === 'detail' ? (shortDate(cell.date)||'•') : '');
+          html += '<td>'+mark+'</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</table>';
+    }
+    return html;
+  }
+
+  function doResetForNewSemester(){
+    state.termStart=''; state.termEnd=''; state.template=emptyTemplate(); state.templateOptions=[];
     state.overrides={}; state.holidayNames={}; state.reminders={}; state.keyNotes={};
-    state.checklist=[]; state.currentWeekIndex=0; state.endSemOpen=false; state.setupOpen=true; state.tab='calendar';
+    state.checklist=[]; state.currentWeekIndex=0; state.endSemOpen=false; state.endsemDate=''; state.endsemPdf='';
+    state.sectionOpen.setup = true; state.tab='calendar';
     saveToStorage(); render();
     toast('學期已結束，系統已重新初始化');
+  }
+  function endSemester(){
+    var dateStr = state.endsemDate;
+    if(!dateStr){ toast('請輸入日期'); return; }
+    if(state.endsemPdf === 'yes'){
+      var area = document.getElementById('print-area');
+      if(area){
+        area.innerHTML = buildPrintHtml();
+        window.print();
+      }
+    }
+    doResetForNewSemester();
   }
   function openEditor(itemId, cls){
     var item = state.checklist.filter(function(i){ return i.id===itemId; })[0];
     if(!item) return;
+    if(!item.classes[cls]) item.classes[cls] = { status:'empty', date:'', text:'' };
     state.editingCell = { itemId: itemId, cls: cls };
     state.editDate = item.classes[cls].date || '';
     render();
@@ -672,7 +890,8 @@
     var item = state.checklist.filter(function(i){ return i.id===state.editingCell.itemId; })[0];
     if(!item) return;
     item.classes[state.editingCell.cls] = { status: status, date: state.editDate, text: textVal };
-    var allColored = CLASS_LIST.every(function(c){ return item.classes[c].status === 'colored'; });
+    var targets = checkTargets();
+    var allColored = targets.length > 0 && targets.every(function(t){ return item.classes[t] && item.classes[t].status === 'colored'; });
     item.completedAt = allColored ? (item.completedAt || Date.now()) : null;
     state.editingCell = null; state.editDate='';
     saveToStorage(); render();
@@ -687,6 +906,31 @@
     saveToStorage(); render();
   }
 
+  function shiftDatePickerMonth(delta){
+    if(!state.datePicker) return;
+    var parts = state.datePicker.viewYM.split('-').map(Number);
+    var d = new Date(parts[0], parts[1]-1+delta, 1);
+    state.datePicker.viewYM = d.getFullYear()+'-'+pad(d.getMonth()+1);
+    render();
+  }
+  function pickDate(dateStr){
+    if(!state.datePicker || !dateStr) return;
+    var field = state.datePicker.field, mode = state.datePicker.mode;
+    if(mode === 'validated'){
+      var v = validateSchoolDate(dateStr);
+      if(!v.ok){ toast(v.msg); return; }
+    }
+    state[field] = dateStr;
+    state.datePicker = null;
+    saveToStorage(); render();
+  }
+  function clearPickedDate(){
+    if(!state.datePicker) return;
+    state[state.datePicker.field] = '';
+    state.datePicker = null;
+    saveToStorage(); render();
+  }
+
   // ---------- Event delegation ----------
   function onRootClick(e){
     var btn = e.target.closest ? e.target.closest('[data-action]') : null;
@@ -694,7 +938,6 @@
     var action = btn.getAttribute('data-action');
     switch(action){
       case 'set-tab': state.tab = btn.getAttribute('data-tab'); render(); break;
-      case 'toggle-setup': state.setupOpen = !state.setupOpen; render(); break;
       case 'set-template-day': state.templateActiveDay = parseInt(btn.getAttribute('data-day'),10); render(); break;
       case 'prev-week': state.currentWeekIndex = Math.max(0, state.currentWeekIndex-1); render(); break;
       case 'next-week': {
@@ -703,14 +946,22 @@
         render(); break;
       }
       case 'add-course': addCourseItem(); break;
+      case 'save-item-edit': saveItemEdit(); break;
       case 'add-activity': addActivity(); break;
       case 'add-reminder': addReminderAction(); break;
       case 'swap-classes': swapClassesAction(); break;
       case 'change-course': changeCourseAction(); break;
+      case 'delete-course': deleteCourseAction(); break;
       case 'set-holiday': setHolidayAction(); break;
       case 'toggle-endsem': state.endSemOpen = true; render(); break;
       case 'cancel-endsem': state.endSemOpen = false; render(); break;
       case 'confirm-endsem': endSemester(); break;
+      case 'add-tplopt': state.templateOptions.push({ name:'', isTarget:false }); saveToStorage(); render(); break;
+      case 'remove-tplopt': {
+        var ridx = parseInt(btn.getAttribute('data-idx'),10);
+        state.templateOptions.splice(ridx,1);
+        saveToStorage(); render(); break;
+      }
       case 'toggle-section': {
         var key = btn.getAttribute('data-key');
         state.sectionOpen[key] = !state.sectionOpen[key];
@@ -720,12 +971,27 @@
       case 'close-editor': closeEditor(); break;
       case 'save-cell': saveCell(btn.getAttribute('data-status')); break;
       case 'clear-cell': clearCell(); break;
+      case 'open-datepicker': {
+        var field = btn.getAttribute('data-field');
+        var mode = btn.getAttribute('data-mode');
+        var cur = state[field];
+        var base = cur || formatDate(new Date());
+        state.datePicker = { field: field, mode: mode, viewYM: base.slice(0,7) };
+        render(); break;
+      }
+      case 'close-datepicker': state.datePicker = null; render(); break;
+      case 'dp-prev-month': shiftDatePickerMonth(-1); break;
+      case 'dp-next-month': shiftDatePickerMonth(1); break;
+      case 'dp-pick': pickDate(btn.getAttribute('data-date')); break;
+      case 'dp-clear': clearPickedDate(); break;
       default: break;
     }
   }
   function onDocClick(e){
     var overlay = e.target.closest ? e.target.closest('.modal-overlay') : null;
-    if(overlay && e.target === overlay){ closeEditor(); }
+    if(!overlay || e.target !== overlay) return;
+    if(overlay.classList.contains('dp-overlay')){ state.datePicker = null; render(); return; }
+    closeEditor();
   }
   function onChange(e){
     var el = e.target;
@@ -736,31 +1002,33 @@
       render();
       return;
     }
-    if(action === 'set-date-field'){
-      var field = el.getAttribute('data-field');
-      var val = el.value;
-      var v = validateSchoolDate(val);
-      if(!v.ok){ toast(v.msg); el.value = state[field] || ''; return; }
-      state[field] = val;
-      render();
-      return;
-    }
     if(action === 'set-template-value'){
       state.template[state.templateActiveDay][el.getAttribute('data-slot')] = el.value;
       saveToStorage(); render();
       return;
     }
-    var bind = el.getAttribute('data-bind');
-    if(bind === 'termStart'){ state.termStart = el.value; saveToStorage(); render(); return; }
-    if(bind === 'termEnd'){ state.termEnd = el.value; saveToStorage(); render(); return; }
+    if(action === 'toggle-tplopt-target'){
+      var idx = parseInt(el.getAttribute('data-idx'),10);
+      if(state.templateOptions[idx]){ state.templateOptions[idx].isTarget = el.checked; }
+      saveToStorage(); render();
+      return;
+    }
   }
   function onFocusOut(e){
     var el = e.target;
     if(!el || !el.getAttribute) return;
-    if(el.getAttribute('data-action') === 'save-keynotes'){
+    var action = el.getAttribute('data-action');
+    if(action === 'save-keynotes'){
       var week = el.getAttribute('data-week');
       state.keyNotes[week] = el.value;
       saveToStorage();
+      return;
+    }
+    if(action === 'save-tplopt-name'){
+      var idx = parseInt(el.getAttribute('data-idx'),10);
+      if(state.templateOptions[idx]){ state.templateOptions[idx].name = el.value.trim(); }
+      saveToStorage(); render();
+      return;
     }
   }
 
