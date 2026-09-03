@@ -302,8 +302,8 @@
     editItemId: "",
     datePicker: null,
     remDate:"",
-    swapADate:"", swapASlot:"", swapAClass:"",
-    swapBDate:"", swapBSlot:"", swapBClass:"",
+    swapADate:"", swapASlot:"",
+    swapBDate:"", swapBSlot:"",
     chgDate:"", chgSlot:"",
     holDate:"",
     endSemOpen: false,
@@ -592,9 +592,6 @@
   function renderChangesTab(){
     var html = '<div class="stack">';
 
-    var names = templateOptionNames();
-    var classOpts = names.map(function(c){ return {value:c,label:c}; });
-
     var chgCurrent = (state.chgDate && state.chgSlot) ? getEffective(state.chgDate, weekdayIdxMonFri(state.chgDate), state.chgSlot) : null;
     var chgBody = '<div class="stack-sm">' +
       '<div class="field"><label>日期</label>'+dateInputHtml('chgDate', state.chgDate)+'</div>' +
@@ -612,12 +609,10 @@
       '<div class="swapbox"><div class="swapbox-title">時段 A</div><div class="stack-sm">' +
         dateInputHtml('swapADate', state.swapADate) +
         selectHtml('swapASlot', SLOTS.map(function(s){return {value:s,label:s};}), state.swapASlot) +
-        selectHtml('swapAClass', classOpts, state.swapAClass) +
         '</div>' + ((state.swapADate && state.swapASlot) ? '<div class="muted mt-2">目前內容：'+(escapeHtml(swapACurrent.content)||'（無）')+'</div>' : '') + '</div>' +
       '<div class="swapbox"><div class="swapbox-title">時段 B</div><div class="stack-sm">' +
         dateInputHtml('swapBDate', state.swapBDate) +
         selectHtml('swapBSlot', SLOTS.map(function(s){return {value:s,label:s};}), state.swapBSlot) +
-        selectHtml('swapBClass', classOpts, state.swapBClass) +
         '</div>' + ((state.swapBDate && state.swapBSlot) ? '<div class="muted mt-2">目前內容：'+(escapeHtml(swapBCurrent.content)||'（無）')+'</div>' : '') + '</div>' +
       '<button class="btn btn-violet" data-action="swap-classes">交換內容</button>' +
       '</div>';
@@ -767,17 +762,17 @@
     toast('已加入提醒事項');
   }
   function swapClassesAction(){
-    var dateA=state.swapADate, slotA=state.swapASlot, clsA=state.swapAClass;
-    var dateB=state.swapBDate, slotB=state.swapBSlot, clsB=state.swapBClass;
-    if(!dateA||!slotA||!clsA||!dateB||!slotB||!clsB){ toast('請完整選擇兩組日期、時段、選項'); return; }
+    var dateA=state.swapADate, slotA=state.swapASlot;
+    var dateB=state.swapBDate, slotB=state.swapBSlot;
+    if(!dateA||!slotA||!dateB||!slotB){ toast('請完整選擇兩組日期與時段'); return; }
     if(dateA===dateB && slotA===slotB){ toast('請選擇兩個不同的時段'); return; }
     var wA = weekdayIdxMonFri(dateA), wB = weekdayIdxMonFri(dateB);
     var a = getEffective(dateA, wA, slotA);
     var b = getEffective(dateB, wB, slotB);
-    state.overrides[dateA+'__'+slotA] = { content: b.content, type: b.type==='empty' ? 'empty' : 'change' };
-    state.overrides[dateB+'__'+slotB] = { content: a.content, type: a.type==='empty' ? 'empty' : 'change' };
-    state.swapADate=''; state.swapASlot=''; state.swapAClass='';
-    state.swapBDate=''; state.swapBSlot=''; state.swapBClass='';
+    state.overrides[dateA+'__'+slotA] = { content: b.content, type: b.type };
+    state.overrides[dateB+'__'+slotB] = { content: a.content, type: a.type };
+    state.swapADate=''; state.swapASlot='';
+    state.swapBDate=''; state.swapBSlot='';
     saveToStorage(); render();
     toast('已完成調課');
   }
