@@ -116,15 +116,8 @@
   .daydate{ font-size:12px; font-weight:400; color:var(--faint); }
 
   .notes-box{ background:var(--amber-bg); border:2px solid #fde68a; border-radius:18px; padding:13px; margin-bottom:12px; }
-  .notes-title{ font-size:14px; font-weight:800; color:var(--amber); }
-  .notes-head{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
-  .notes-toolbar{ display:flex; gap:4px; }
-  .fmtbtn{ width:28px; height:28px; border-radius:8px; border:2px solid #fde68a; background:#fff; font-size:12px; font-weight:800; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; color:#57534e; }
-  .fmtbtn-hl{ background:#fef9c3; }
-  .fmtbtn-red{ color:#dc2626; }
-  .fmtbtn-blue{ color:#2563eb; }
-  .rich-note{ width:100%; min-height:70px; background:#fff; border:2px solid #fde68a; border-radius:12px; padding:10px 12px; font-size:15px; outline:none; overflow-wrap:break-word; line-height:1.5; }
-  .rich-note:empty:before{ content: attr(data-placeholder); color:#b3aea7; }
+  .notes-title{ font-size:14px; font-weight:800; color:var(--amber); margin-bottom:8px; }
+  .rich-note{ width:100%; min-height:70px; background:#fff; border:2px solid #fde68a; border-radius:12px; padding:10px 12px; font-size:15px; font-family:inherit; outline:none; resize:vertical; line-height:1.5; }
 
   .legend{ display:flex; flex-wrap:wrap; gap:12px; font-size:13px; color:var(--muted); margin-bottom:16px; }
   .legend span{ display:flex; align-items:center; gap:6px; }
@@ -314,26 +307,7 @@
     if(str === undefined || str === null) return "";
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   }
-  function sanitizeRichHtml(html){
-    try{
-      var div = document.createElement('div');
-      div.innerHTML = html || '';
-      var bad = div.querySelectorAll('script, style, iframe, object, embed, link, meta, form, input, button');
-      for(var i=0;i<bad.length;i++){ bad[i].remove(); }
-      var all = div.querySelectorAll('*');
-      for(var j=0;j<all.length;j++){
-        var el = all[j];
-        var attrs = [].slice.call(el.attributes);
-        attrs.forEach(function(attr){
-          var n = attr.name.toLowerCase();
-          if(n.indexOf('on') === 0 || n === 'srcdoc' || n === 'href' || n === 'src' || n === 'xlink:href'){
-            el.removeAttribute(attr.name);
-          }
-        });
-      }
-      return div.innerHTML;
-    }catch(e){ return ''; }
-  }
+
   function stripHtml(html){
     try{
       var div = document.createElement('div');
@@ -579,15 +553,8 @@
 
   function renderNoteBox(title, targetId, content, saveAction, extraAttr){
     return '<div class="notes-box">' +
-      '<div class="notes-head"><span class="notes-title">'+title+'</span>' +
-        '<div class="notes-toolbar">' +
-          '<button type="button" class="fmtbtn" data-action="fmt-bold" data-target="'+targetId+'" onmousedown="return false;" title="粗體"><b>B</b></button>' +
-          '<button type="button" class="fmtbtn fmtbtn-hl" data-action="fmt-highlight" data-target="'+targetId+'" onmousedown="return false;" title="螢光筆">🖍️</button>' +
-          '<button type="button" class="fmtbtn fmtbtn-red" data-action="fmt-color" data-color="#dc2626" data-target="'+targetId+'" onmousedown="return false;" title="紅字">A</button>' +
-          '<button type="button" class="fmtbtn fmtbtn-blue" data-action="fmt-color" data-color="#2563eb" data-target="'+targetId+'" onmousedown="return false;" title="藍字">A</button>' +
-          '<button type="button" class="fmtbtn" data-action="fmt-clear" data-target="'+targetId+'" onmousedown="return false;" title="清除格式">⌫</button>' +
-        '</div></div>' +
-      '<div class="rich-note" id="'+targetId+'" contenteditable="true" data-action="'+saveAction+'" data-placeholder="點此輸入..." '+(extraAttr||'')+'>'+content+'</div>' +
+      '<div class="notes-title">'+title+'</div>' +
+      '<textarea class="rich-note" id="'+targetId+'" rows="4" placeholder="點此輸入..." data-action="'+saveAction+'" '+(extraAttr||'')+'>'+escapeHtml(stripHtml(content))+'</textarea>' +
       '</div>';
   }
 
@@ -1139,23 +1106,6 @@
     toast('已設定放假：'+name);
   }
 
-  function applyFormat(targetId, cmd, value){
-    var el = document.getElementById(targetId);
-    if(!el) return;
-    el.focus();
-    try{
-      document.execCommand('styleWithCSS', false, true);
-      document.execCommand(cmd, false, value || null);
-    }catch(e){}
-    var html = sanitizeRichHtml(el.innerHTML);
-    if(targetId === 'note-long'){
-      state.keyNotesLong = html;
-    } else {
-      var wk = el.getAttribute('data-week');
-      if(wk) state.keyNotes[wk] = html;
-    }
-    saveToStorage();
-  }
   function clearTemplateReferences(name){
     for(var wd=0; wd<5; wd++){
       SLOTS.forEach(function(slot){
@@ -1532,10 +1482,6 @@
         break;
       }
       case 'seat-prompt-cancel': state.seatPrompt = null; render(); break;
-      case 'fmt-bold': applyFormat(btn.getAttribute('data-target'), 'bold'); break;
-      case 'fmt-highlight': applyFormat(btn.getAttribute('data-target'), 'hiliteColor', '#fef08a'); break;
-      case 'fmt-color': applyFormat(btn.getAttribute('data-target'), 'foreColor', btn.getAttribute('data-color')); break;
-      case 'fmt-clear': applyFormat(btn.getAttribute('data-target'), 'removeFormat'); break;
       case 'delete-item': {
         var delItemId = btn.getAttribute('data-item');
         var delItem = state.checklist.filter(function(i){ return i.id===delItemId; })[0];
@@ -1644,12 +1590,12 @@
     var action = el.getAttribute('data-action');
     if(action === 'save-keynotes'){
       var week = el.getAttribute('data-week');
-      state.keyNotes[week] = sanitizeRichHtml(el.innerHTML);
+      state.keyNotes[week] = el.value;
       saveToStorage();
       return;
     }
     if(action === 'save-longnote'){
-      state.keyNotesLong = sanitizeRichHtml(el.innerHTML);
+      state.keyNotesLong = el.value;
       saveToStorage();
       return;
     }
