@@ -144,7 +144,7 @@
   .single-row .ck-itemname{ font-size:13px; }
   .ck-cell-single{ width:40px; flex-shrink:0; }
 
-  .btn{ border:none; border-radius:13px; padding:12px 16px; font-weight:800; font-size:16px; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .btn{ border:none; border-radius:13px; padding:12px 16px; font-weight:800; font-size:16px; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none; }
   .btn-teal{ background:var(--teal); color:#fff; }
   .btn-sky{ background:var(--sky); color:#fff; }
   .btn-amber{ background:var(--amber); color:#fff; }
@@ -362,7 +362,7 @@
     endSemOpen: false,
     endsemDate: "",
     endsemPdf: "",
-    sectionOpen: { mode:true, setup:true, reminder:false, swap:false, change:false, holiday:false, backup:false, endsem:false }
+    sectionOpen: { mode:true, setup:true, reminder:false, swap:false, change:false, holiday:false, backup:false, manual:false, endsem:false }
   };
 
   function templateOptionNames(){
@@ -975,6 +975,9 @@
       '<button class="btn btn-rose" type="button" data-action="do-import">📥 匯入（將覆蓋目前資料）</button>' +
       '</div>';
     html += moduleCard('💾', '匯出／匯入資料', 'backup', backupBody);
+
+    var manualBody = '<a class="btn btn-teal btn-block manual-link" href="https://ytc5221.github.io/-school-schedule/manual.html" target="_blank" rel="noopener">📘 開啟使用手冊</a>';
+    html += moduleCard('📘', '使用手冊', 'manual', manualBody);
 
     var endBody;
     if(!state.endSemOpen){
