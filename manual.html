@@ -31,7 +31,7 @@
   .header h1{ margin:0; font-size:15px; font-weight:800; }
   .header .sub{ font-size:11px; color:var(--muted); margin-top:1px; }
   .pages-viewport{ position:relative; flex:1; margin-right:40px; perspective:1800px; overflow:hidden; }
-  .page{ position:absolute; inset:0; opacity:0; pointer-events:none; transform-origin:left center; transition: transform .46s cubic-bezier(.45,0,.2,1), opacity .4s; }
+  .page{ position:absolute; inset:0; height:100%; opacity:0; pointer-events:none; transform-origin:left center; transition: transform .46s cubic-bezier(.45,0,.2,1), opacity .4s; }
   .page.current{ position:relative; opacity:1; pointer-events:auto; transform:none; z-index:2; }
   .page.entering-fwd{ transform: rotateY(40deg) translateX(18%); opacity:0; z-index:3; }
   .page.entering-back{ transform: rotateY(-40deg) translateX(-18%); opacity:0; z-index:3; }
@@ -178,26 +178,6 @@
     }, 480);
   }
 
-  pages.forEach(function(page, idx){
-    var inner = page.querySelector('.page-inner');
-    var touchStartY = 0;
-    inner.addEventListener('wheel', function(e){
-      if(idx !== currentIndex || isAnimating) return;
-      var atBottom = inner.scrollHeight - inner.scrollTop - inner.clientHeight < 2;
-      var atTop = inner.scrollTop <= 0;
-      if(e.deltaY > 0 && atBottom){ e.preventDefault(); goToPage(idx+1); }
-      else if(e.deltaY < 0 && atTop){ e.preventDefault(); goToPage(idx-1); }
-    }, { passive:false });
-    inner.addEventListener('touchstart', function(e){ touchStartY = e.touches[0].clientY; }, { passive:true });
-    inner.addEventListener('touchmove', function(e){
-      if(idx !== currentIndex || isAnimating) return;
-      var dy = touchStartY - e.touches[0].clientY;
-      var atBottom = inner.scrollHeight - inner.scrollTop - inner.clientHeight < 2;
-      var atTop = inner.scrollTop <= 0;
-      if(dy > 46 && atBottom){ goToPage(idx+1); touchStartY = e.touches[0].clientY; }
-      else if(dy < -46 && atTop){ goToPage(idx-1); touchStartY = e.touches[0].clientY; }
-    }, { passive:true });
-  });
 })();
 </script>
 </body>
