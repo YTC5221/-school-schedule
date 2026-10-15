@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>課務行事曆管理系統 使用手冊</title>
+<style>
+  :root{
+    --desk:#e9e2cd; --page:#faf4e6; --page2:#f6efdd; --ink:#3f3a30; --muted:#8a8270;
+    --ring:#cfc6ab; --ringline:#b7ad8e;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --desk:#e9e2cd; --page:#faf4e6; --page2:#f6efdd; --ink:#3f3a30; --muted:#8a8270; --ring:#cfc6ab; --ringline:#b7ad8e; }
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; background:var(--desk); }
+  body{
+    font-family: ui-rounded, "PingFang TC", "Heiti TC", "Microsoft JhengHei", -apple-system, sans-serif;
+    color:var(--ink); overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    padding: env(safe-area-inset-top) 10px env(safe-area-inset-bottom);
+  }
+  .notebook{
+    position:relative; width:100%; max-width:480px; height:100dvh; max-height:860px;
+    display:flex; background:var(--page); border-radius:14px; box-shadow:0 18px 40px rgba(60,50,20,.25);
+    overflow:hidden;
+  }
+  .spiral{ width:26px; flex-shrink:0; background:linear-gradient(90deg,var(--desk),var(--desk) 40%,transparent); display:flex; flex-direction:column; align-items:center; justify-content:space-evenly; padding:10px 0; z-index:5; }
+  .ring{ width:14px; height:14px; border-radius:50%; background:var(--page); border:2.5px solid var(--ringline); box-shadow: inset 0 1px 2px rgba(0,0,0,.25); }
+  .header{ position:absolute; top:0; left:26px; right:46px; padding:12px 14px 8px; z-index:4; background:linear-gradient(var(--page) 70%, transparent); }
+  .header h1{ margin:0; font-size:15px; font-weight:800; }
+  .header .sub{ font-size:11px; color:var(--muted); margin-top:1px; }
+  .pages-viewport{ position:relative; flex:1; margin-right:40px; perspective:1800px; overflow:hidden; }
+  .page{ position:absolute; inset:0; opacity:0; pointer-events:none; transform-origin:left center; transition: transform .46s cubic-bezier(.45,0,.2,1), opacity .4s; }
+  .page.current{ position:relative; opacity:1; pointer-events:auto; transform:none; z-index:2; }
+  .page.entering-fwd{ transform: rotateY(40deg) translateX(18%); opacity:0; z-index:3; }
+  .page.entering-back{ transform: rotateY(-40deg) translateX(-18%); opacity:0; z-index:3; }
+  .page.leaving-fwd{ transform: rotateY(-55deg) translateX(-28%); opacity:0; z-index:1; }
+  .page.leaving-back{ transform: rotateY(55deg) translateX(28%); opacity:0; z-index:1; }
+  .page-inner{ height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:56px 16px 24px; background: repeating-linear-gradient(var(--page) 0 27px, #f1ead6 27px 28px); }
+  .page-inner h2{ font-size:19px; margin:0 0 10px; display:flex; align-items:center; gap:7px; }
+  .page-inner h3{ font-size:14px; margin:16px 0 6px; color:var(--tabc,#7a6a3a); }
+  .page-inner p{ font-size:13.5px; line-height:1.7; margin:0 0 8px; }
+  .page-inner ul{ margin:0 0 8px; padding-left:18px; }
+  .page-inner li{ font-size:13.5px; line-height:1.6; margin-bottom:4px; }
+  .page-inner .note{ background:#fff8e6; border:1px dashed #d9c98a; border-radius:10px; padding:8px 10px; font-size:12.5px; color:#6b5f2e; margin:10px 0; }
+  .page-inner .link-btn{ display:flex; align-items:center; justify-content:center; gap:6px; background:#a23b52; color:#fff; text-decoration:none; font-weight:800; font-size:14px; padding:11px 14px; border-radius:12px; margin:4px 0 14px; }
+  .page-inner table{ width:100%; border-collapse:collapse; font-size:12.5px; margin:8px 0; }
+  .page-inner th,.page-inner td{ border:1px solid #e3dabf; padding:5px 7px; text-align:left; }
+  .page-inner th{ background:#f1e9cf; }
+
+  .tabs{ position:absolute; top:40px; right:0; width:40px; display:flex; flex-direction:column; gap:8px; z-index:6; }
+  .tab{ border:none; cursor:pointer; font-family:inherit; font-weight:800; font-size:12px;
+    writing-mode: vertical-rl; text-orientation:mixed; padding:10px 5px; border-radius:0 8px 8px 0;
+    color:#fff; opacity:.72; transform:translateX(0) scale(.94); transform-origin:left center;
+    transition: transform .25s, opacity .25s, width .25s; width:26px; box-shadow:1px 2px 4px rgba(0,0,0,.15); }
+  .tab.active{ opacity:1; transform:translateX(3px) scale(1.12); width:32px; }
+</style>
+</head>
+<body>
+<div class="notebook">
+  <div class="spiral" id="spiral"></div>
+  <div class="header"><h1>課務行事曆管理系統</h1><div class="sub">使用手冊</div></div>
+  <div class="pages-viewport" id="viewport"></div>
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<script>
+(function(){
+  var SECTIONS = [
+    { key:'開始', color:'#a23b52', title:'🚀 快速開始', html:
+      '<p>直接用手機或電腦瀏覽器打開網址即可使用，免安裝、免登入、免帳號。</p>'+
+      '<a class="link-btn" href="https://ytc5221.github.io/-school-schedule/" target="_blank" rel="noopener">🚀 前往系統</a>'+
+      '<h3>iPhone 建議</h3><p>用 Safari 打開網址 → 分享圖示 →「加入主畫面」，桌面會出現獨立 App 圖示，開啟後是全螢幕畫面。</p>'+
+      '<h3>五個分頁</h3><table><tr><th>分頁</th><th>功能</th></tr>'+
+      '<tr><td>📅 行事曆</td><td>查看每週課表、重點筆記</td></tr>'+
+      '<tr><td>✅ 進度</td><td>追蹤課程進度/待辦</td></tr>'+
+      '<tr><td>📝 訂正</td><td>管理訂正名單（需設定啟用）</td></tr>'+
+      '<tr><td>✏️ 異動</td><td>調課、放假、臨時異動</td></tr>'+
+      '<tr><td>⚙️ 設定</td><td>學期、課表範本、備份</td></tr></table>'+
+      '<h3>第一次使用建議順序</h3><ul><li>設定分頁選模式（科任／導師）</li><li>輸入學期起訖日期</li><li>新增課表範本選項並排好每週課表</li><li>回行事曆確認顯示正確</li><li>開始在進度分頁新增項目</li></ul>' },
+
+    { key:'日曆', color:'#a3661f', title:'📅 行事曆分頁', html:
+      '<p>依照學期起訖日期自動產生每週課表，用「◀ 上一週 / 下一週 ▶」切換。</p>'+
+      '<h3>每週課表</h3><p>直欄為週一～週五，橫列為 10 個時段：<b>M、1、2、3、4、N、5、6、7、E</b>（M＝晨間、N＝午休、E＝放學後）。</p>'+
+      '<h3>顏色</h3><p>課表範本選項會自動套專屬顏色（最多 10 組）；臨時手動輸入的異動文字一律顯示灰色，一眼分辨「正常課程」與「臨時異動」。學期範圍外的日期會顯示「-」。</p>'+
+      '<h3>單／雙週交替課程</h3><p>某些節次如果是隔週上不同課（例如單週綜合、雙週美術），可在設定分頁的課表範本中針對該節次個別設定單週／雙週內容，行事曆會自動依 Week 序號單雙數切換顯示。</p>'+
+      '<h3>本週 ✏️／學期 ✏️</h3><p>兩個都是單純的文字輸入框。「本週」筆記只在當週顯示；「學期」筆記切換週次也會保留，適合寫整學期都要提醒自己的事。點輸入框外面會自動儲存，不需要另外按儲存鍵。</p>' },
+
+    { key:'進度', color:'#4a7a52', title:'✅ 進度分頁', html:
+      '<p>依「設定」分頁選的模式而不同：</p>'+
+      '<h3>科任模式</h3><p>每列一個項目，橫向對應多個班級（標的），各自獨立勾選格子。</p>'+
+      '<h3>導師模式</h3><p>每個項目只有一個格子，但要指定科目；系統自動把同科目項目分區、左右並排顯示，固定內建「班務」「行政」兩類。</p>'+
+      '<h3>操作格子</h3><p>點格子跳出視窗：選日期、填細節（選填）；按「儲存」＝灰底記錄未完成，按「標記完成」＝打勾＋套色。全部完成會自動沉到清單（或該科目）最下方。</p>'+
+      '<h3>新增／修改／刪除</h3><ul><li>下方「課程內容」輸入名稱送出新增</li><li>「內容修改」下拉選項目可改名稱（導師模式可改科目）</li><li><b>直接點項目名稱文字</b>會跳出確認視窗，確認後整個項目刪除</li></ul>' },
+
+    { key:'訂正', color:'#8c7818', title:'📝 訂正分頁（選用）', html:
+      '<p>需先到設定分頁勾選「啟用訂正分頁」才會出現在分頁列。</p>'+
+      '<h3>新增項目</h3><p>填寫「項目」（會自動帶出歷史名稱建議）、「單元／頁數」（選填）、「座號」。座號可用空格、頓號、逗號、句點分隔多筆，如「3、15、22」。</p>'+
+      '<h3>處理訂正</h3><p>點某個座號按鈕＝該生完成，立刻從清單移除；全部座號清空會跳出確認是否整條刪除。</p>'+
+      '<h3>卡片圖示</h3><ul><li>✏️ 補登座號（事後漏登可以加回來）</li><li>🗑️ 直接整條刪除</li></ul>' },
+
+    { key:'異動', color:'#3f6690', title:'✏️ 異動分頁', html:
+      '<h3>活動／課程異動</h3><p>選日期＋時段，會顯示「目前內容」確認，輸入文字送出即覆蓋原內容；不輸入文字、直接按「🗑️ 刪除目前內容」可清空該格。</p>'+
+      '<h3>調課</h3><p>選兩個時段（A、B），系統顯示雙方目前內容，按「交換內容」互換。若交換的是正式課表內容，顏色會正確保留，不會變灰色。</p>'+
+      '<h3>放假</h3><p>選日期＋輸入假期名稱，當天所有時段清空，並在 M 時段顯示假期名稱。</p>'+
+      '<h3>提醒事項</h3><p>輸入日期＋內容，系統自動判斷所屬週次，顯示在行事曆該週標題下方（⭐ 開頭）。</p>'+
+      '<div class="note">以上模塊預設收合，點標題列展開／收合。</div>' },
+
+    { key:'設定', color:'#6a5490', title:'⚙️ 設定分頁', html:
+      '<h3>我的標題</h3><p>自訂畫面最上方的大標題，留空用預設「課務行事曆管理」。</p>'+
+      '<h3>模式選擇</h3><p>科任／導師模式切換，以及「啟用訂正分頁」開關。</p>'+
+      '<h3>學期設定與課表範本</h3><ul><li>輸入本學期起訖日期</li><li>新增課表範本選項，勾選是否作為進度標的</li><li>切換週一～週五分頁，設定每個時段內容</li><li>需要隔週輪替的節次，勾選「單／雙週交替」分別設定</li><li>下方總覽表可一次檢查整週是否都設定好</li></ul>'+
+      '<h3>匯出／匯入資料</h3><p>所有資料只存在這台裝置瀏覽器裡，<b>強烈建議定期匯出備份</b>（複製文字或下載 .json 檔），換裝置或資料遺失時可匯入還原。</p>'+
+      '<h3>學期結束</h3><p>清空行事曆、進度、訂正等學期資料，但保留標題與模式等個人設定。此動作無法復原，請先備份。</p>' },
+
+    { key:'安全', color:'#964d80', title:'🔒 資料儲存須知', html:
+      '<p>所有資料只存在<b>這台裝置的這個瀏覽器</b>裡，不會自動同步雲端或其他裝置。</p>'+
+      '<h3>會遺失資料的情況</h3><ul><li>自己按下「學期結束」確認</li><li>手動清除瀏覽器網站資料／快取</li><li>超過一週未開啟，iOS 隱私機制可能自動清除</li><li>換手機或改用別的瀏覽器開啟</li></ul>'+
+      '<h3>不會影響資料的操作</h3><p>重新整理頁面、關閉再打開、系統更新程式內容，都不會動到已輸入的資料。</p>'+
+      '<div class="note">養成定期到設定分頁「匯出備份」的習慣，是避免資料遺失最有效的方法。</div>' },
+
+    { key:'問答', color:'#6f6f1f', title:'💬 常見問題', html:
+      '<p><b>Q：行事曆出現對不上的灰色文字？</b><br>A：通常是刪除/改名課表範本選項後的殘留，系統已會自動清理，重新整理頁面即可。</p>'+
+      '<p><b>Q：切換模式後進度分頁跑版？</b><br>A：兩模式呈現方式不同，建議先決定模式再大量輸入資料，中途切換不會自動轉換舊資料格式。</p>'+
+      '<p><b>Q：訂正頁面按鈕沒反應？</b><br>A：請確認用最新版本，舊版在全螢幕模式下部分彈窗可能不顯示，新版已改用網頁自繪視窗。</p>'+
+      '<p><b>Q：可以列印或存 PDF 嗎？</b><br>A：可透過瀏覽器列印功能，列印畫面選「儲存為 PDF」。</p>'+
+      '<p><b>Q：能多人共用同一份資料嗎？</b><br>A：目前不行，每人裝置各自獨立。需要共用可用「匯出／匯入」把備份傳給對方匯入，但之後修改不會互相同步。</p>'+
+      '<p><b>Q：忘記網址？</b><br>A：請向系統建置者索取，或確認是否已加入主畫面。</p>' }
+  ];
+
+  var viewport = document.getElementById('viewport');
+  var tabsEl = document.getElementById('tabs');
+  var spiral = document.getElementById('spiral');
+
+  for(var r=0;r<14;r++){ var ring=document.createElement('div'); ring.className='ring'; spiral.appendChild(ring); }
+
+  SECTIONS.forEach(function(sec, i){
+    var page = document.createElement('div');
+    page.className = 'page' + (i===0 ? ' current' : '');
+    page.innerHTML = '<div class="page-inner" style="--tabc:'+sec.color+'"><h2>'+sec.title+'</h2>'+sec.html+'</div>';
+    viewport.appendChild(page);
+
+    var tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'tab' + (i===0 ? ' active' : '');
+    tab.textContent = sec.key;
+    tab.style.background = sec.color;
+    tab.addEventListener('click', function(idx){ return function(){ goToPage(idx); }; }(i));
+    tabsEl.appendChild(tab);
+  });
+
+  var pages = Array.prototype.slice.call(viewport.querySelectorAll('.page'));
+  var tabs = Array.prototype.slice.call(tabsEl.querySelectorAll('.tab'));
+  var currentIndex = 0, isAnimating = false;
+
+  function updateTabs(){ tabs.forEach(function(t,i){ t.classList.toggle('active', i===currentIndex); }); }
+
+  function goToPage(idx){
+    if(idx<0 || idx>=pages.length || idx===currentIndex || isAnimating) return;
+    isAnimating = true;
+    var forward = idx > currentIndex;
+    var outgoing = pages[currentIndex], incoming = pages[idx];
+    outgoing.classList.remove('current');
+    outgoing.classList.add(forward ? 'leaving-fwd' : 'leaving-back');
+    incoming.classList.add(forward ? 'entering-fwd' : 'entering-back');
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        incoming.classList.remove('entering-fwd','entering-back');
+        incoming.classList.add('current');
+      });
+    });
+    currentIndex = idx; updateTabs();
+    setTimeout(function(){
+      outgoing.classList.remove('leaving-fwd','leaving-back');
+      var inner = incoming.querySelector('.page-inner'); if(inner) inner.scrollTop = 0;
+      isAnimating = false;
+    }, 480);
+  }
+
+  pages.forEach(function(page, idx){
+    var inner = page.querySelector('.page-inner');
+    var touchStartY = 0;
+    inner.addEventListener('wheel', function(e){
+      if(idx !== currentIndex || isAnimating) return;
+      var atBottom = inner.scrollHeight - inner.scrollTop - inner.clientHeight < 2;
+      var atTop = inner.scrollTop <= 0;
+      if(e.deltaY > 0 && atBottom){ e.preventDefault(); goToPage(idx+1); }
+      else if(e.deltaY < 0 && atTop){ e.preventDefault(); goToPage(idx-1); }
+    }, { passive:false });
+    inner.addEventListener('touchstart', function(e){ touchStartY = e.touches[0].clientY; }, { passive:true });
+    inner.addEventListener('touchmove', function(e){
+      if(idx !== currentIndex || isAnimating) return;
+      var dy = touchStartY - e.touches[0].clientY;
+      var atBottom = inner.scrollHeight - inner.scrollTop - inner.clientHeight < 2;
+      var atTop = inner.scrollTop <= 0;
+      if(dy > 46 && atBottom){ goToPage(idx+1); touchStartY = e.touches[0].clientY; }
+      else if(dy < -46 && atTop){ goToPage(idx-1); touchStartY = e.touches[0].clientY; }
+    }, { passive:true });
+  });
+})();
+</script>
+</body>
+</html>
